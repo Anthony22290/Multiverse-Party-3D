@@ -1,0 +1,44 @@
+# Unity generated data
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+# OBJ source assets in the game are imported from Assets/.
+!Assets/**/OBJ/
+!Assets/**/OBJ/**
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+[Mm]emoryCaptures/
+[Rr]ecordings/
+
+# Unity generated solution and project files
+*.csproj
+*.sln
+*.slnx
+*.unityproj
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svclog
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# IDE and OS noise
+.vs/
+.idea/
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Build artifacts
+*.apk
+*.aab
+*.app
+*.unitypackage
+*.zip~
