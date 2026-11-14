@@ -1,0 +1,184 @@
+using UnityEngine;
+using UnityEngine.InputSystem;
+[RequireComponent(typeof(Rigidbody), typeof(BoxCollider))]
+public sealed class CrazyKartController : MonoBehaviour
+{
+    [SerializeField] bool isHuman = true;
+    [SerializeField] string displayName = "Corredor";
+    [SerializeField] Color kartColor = Color.cyan;
+    [SerializeField] float maxSpeed = 22, acceleration = 16, turnSpeed = 95;
+    [SerializeField, Range(2, 14)] float steeringResponse = 7f;
+    Rigidbody body;
+    CrazyKartDirector director;
+    float boostUntil, shieldUntil, stunUntil, driftCharge, stuckTime, lastUse;
+    bool wasDrifting;
+    float smoothedSteer, hitProtectionUntil, finishCoastUntil;
+    public float LastRecoveryTime { get; private set; } = -100;
+    public float Steering => smoothedSteer;
+    public bool Drifting => wasDrifting;
+    public bool WrongWay => director != null && Speed > 3 && Vector3.Dot(transform.forward, (director.GetWaypointPosition(NextCheckpoint) - director.GetWaypointPosition(CurrentCheckpoint)).normalized) < -.3f;
+    static readonly string[] ItemNames = { "SIN OBJETO", "TURBO", "PULSO", "TRAMPA", "ESCUDO" };
+    public bool IsHuman { get => isHuman; set => isHuman = value; }
+    public string DisplayName { get => displayName; set => displayName = value; }
+    public Color KartColor { get => kartColor; set => kartColor = value; }
+    public int CurrentLap { get; set; } = 1;
+    public int CurrentCheckpoint { get; set; }
+    public int NextCheckpoint => director == null || director.Waypoints.Count == 0 ? 0 : (CurrentCheckpoint + 1) % director.Waypoints.Count;
+    public int HeldItem { get; private set; }
+    public bool HasFinished { get; private set; }
+    public float FinishTime { get; private set; }
+    public float Speed => body == null ? 0 : Vector3.ProjectOnPlane(body.linearVelocity, Vector3.up).magnitude;
+    public float NitroAmount => Mathf.Clamp01(driftCharge / 1.8f) * 100;
+    public bool Boosting => Time.time < boostUntil;
+    public bool Shielded => Time.time < shieldUntil;
+    public bool Stunned => Time.time < stunUntil;
+    public string ItemName => ItemNames[HeldItem];
+    void Start()
+    {
+        body = GetComponent<Rigidbody>();
+        body.mass = 180; body.linearDamping = .12f;
+        body.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
+        body.interpolation = RigidbodyInterpolation.Interpolate;
+        body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+        body.solverIterations = 12;
+        director = FindAnyObjectByType<CrazyKartDirector>();
+        if (director != null) director.Register(this);
+        if (GetComponent<CrazyKartRecovery>() == null) gameObject.AddComponent<CrazyKartRecovery>();
+        if (GetComponent<CrazyKartFeedback>() == null) gameObject.AddComponent<CrazyKartFeedback>();
+    }
+    void Update()
+    {
+        if (!isHuman || director == null || !director.Playing) return;
+        var k = Keyboard.current;
+        if (k == null) return;
+        if (k.spaceKey.wasPressedThisFrame || k.fKey.wasPressedThisFrame) UseItem();
+        if (k.rKey.wasPressedThisFrame) Recover();
+    }
+    void FixedUpdate()
+    {
+        if (HasFinished) { body.linearVelocity = director != null && !director.Finished && Time.time < finishCoastUntil ? transform.forward * 5 : Vector3.zero; body.angularVelocity = Vector3.zero; return; }
+        if (director == null || !director.Playing)
+        { body.linearVelocity = Vector3.zero; body.angularVelocity = Vector3.zero; return; }
+        float throttle = 0, steer = 0;
+        bool drift = false;
+        if (isHuman)
+        {
+            var k = Keyboard.current;
+            if (k != null)
+            {
+                throttle = (k.wKey.isPressed || k.upArrowKey.isPressed ? 1 : 0) - (k.sKey.isPressed || k.downArrowKey.isPressed ? 1 : 0);
+                steer = (k.dKey.isPressed || k.rightArrowKey.isPressed ? 1 : 0) - (k.aKey.isPressed || k.leftArrowKey.isPressed ? 1 : 0);
+                drift = k.leftShiftKey.isPressed || k.rightShiftKey.isPressed;
+            }
+        }
+        else
+        {
+            Vector3 target = director.GetWaypointPosition(NextCheckpoint);
+            Vector3 tangent = (director.GetWaypointPosition(NextCheckpoint + 1) - target).normalized;
+            int lane = 0; for (int i=0;i<director.Karts.Count;i++) if(director.Karts[i]==this) lane=i%3-1;
+            target += Vector3.Cross(Vector3.up,tangent) * lane * 1.5f;
+            Vector3 to = target - body.position; to.y = 0;
+            float angle = Vector3.SignedAngle(transform.forward, to, Vector3.up);
+            steer = Mathf.Clamp(angle / 35, -1, 1);
+            throttle = Mathf.Abs(angle) > 65 && Speed > 10 ? -.35f : 1;
+            if (HeldItem != 0 && Time.time - lastUse > 3 && Mathf.Abs(angle) < 20) UseItem();
+            stuckTime = Speed < 2 ? stuckTime + Time.fixedDeltaTime : 0;
+            if (stuckTime > 5) Recover();
+        }
+        if (Stunned) { throttle = 0; steer = 0; drift = false; }
+        smoothedSteer = Mathf.MoveTowards(smoothedSteer, steer, steeringResponse * Time.fixedDeltaTime);
+        steer = smoothedSteer;
+        bool grounded = Physics.Raycast(body.position + Vector3.up * .15f, Vector3.down, out RaycastHit groundHit, .9f, ~0, QueryTriggerInteraction.Ignore);
+        if (grounded)
+        {
+            float offroad = director.DistanceToRoad(body.position) > director.roadHalfWidth ? .48f : 1;
+            float limit = (Boosting ? maxSpeed * 1.4f : maxSpeed) * offroad;
+            var planar = Vector3.ProjectOnPlane(body.linearVelocity, Vector3.up);
+            float forwardSpeed = Vector3.Dot(planar, transform.forward);
+            bool drifting = drift && Mathf.Abs(steer) > .1f && forwardSpeed > 7 && !Stunned;
+            if (drifting) driftCharge = Mathf.Min(2.5f, driftCharge + Time.fixedDeltaTime);
+            if (wasDrifting && !drifting) { if (!drift && !Stunned && driftCharge >= .8f) ApplyBoost(driftCharge >= 1.8f ? 1.8f : .9f); driftCharge = 0; }
+            wasDrifting = drifting;
+            float yaw = steer * turnSpeed * (drifting ? 1.2f : 1) * Mathf.Clamp01(Mathf.Abs(forwardSpeed) / 5) * (forwardSpeed < -.5f ? -1 : 1);
+            body.MoveRotation(body.rotation * Quaternion.Euler(0, yaw * Time.fixedDeltaTime, 0));
+            planar += transform.forward * throttle * acceleration * Time.fixedDeltaTime;
+            planar -= transform.right * Vector3.Dot(planar, transform.right) * Mathf.Clamp01((drifting ? 2.3f : 9) * Time.fixedDeltaTime);
+            if (throttle == 0) planar *= 1 - (Stunned ? 3 : .7f) * Time.fixedDeltaTime;
+            if (Vector3.Dot(planar, transform.forward) < -7) planar = Vector3.ClampMagnitude(planar, 7);
+            planar = Vector3.ClampMagnitude(planar, limit);
+            float slopeVelocity = -(planar.x*groundHit.normal.x+planar.z*groundHit.normal.z)/Mathf.Max(.35f,groundHit.normal.y);
+            body.linearVelocity = new Vector3(planar.x, Mathf.Clamp(slopeVelocity,-6,6)+Mathf.Min(0,body.linearVelocity.y)*.2f, planar.z);
+        }
+        body.angularVelocity = Vector3.zero;
+        if (body.position.y < -4 || body.position.y > 12) Recover();
+    }
+    public void Recover()
+    {
+        if (director == null || body == null || HasFinished) return;
+        var p = director.GetWaypointPosition(CurrentCheckpoint);
+        var f = director.GetWaypointPosition(NextCheckpoint) - p; f.y = 0;
+        var rotation=Quaternion.LookRotation(f);var side=Vector3.Cross(Vector3.up,f.normalized);
+        Vector3 chosen=p+Vector3.up*.85f;
+        foreach(float back in new[]{0f,3.5f,7f}){
+            bool found=false;
+            foreach(float lane in new[]{0f,-1.8f,1.8f}){
+                Vector3 candidate=p-f.normalized*back+side*lane;
+                foreach(var ground in Physics.RaycastAll(candidate+Vector3.up*3,Vector3.down,7,~0,QueryTriggerInteraction.Ignore))
+                    if(ground.collider.GetComponent<CrazyKartRoadSurface>()!=null){candidate.y=ground.point.y;break;}
+                candidate+=Vector3.up*.85f;bool occupied=false;
+                foreach(var obstacle in Physics.OverlapBox(candidate,new Vector3(.85f,.4f,1.45f),rotation,~0,QueryTriggerInteraction.Ignore))
+                    if(obstacle.attachedRigidbody!=body){occupied=true;break;}
+                if(!occupied){chosen=candidate;found=true;break;}
+            }
+            if(found)break;
+        }
+        body.position = chosen; body.rotation = rotation; LastRecoveryTime=Time.time;
+        body.useGravity=true;body.detectCollisions=true;
+        body.linearVelocity = body.angularVelocity = Vector3.zero;
+        driftCharge = stuckTime = smoothedSteer = 0; wasDrifting = false; boostUntil = 0; stunUntil = Time.time + .5f;
+    }
+    public void ApplyBoost(float duration) { boostUntil = Mathf.Max(boostUntil, Time.time + duration); }
+    public bool GiveItem(int item)
+    {
+        if (HeldItem != 0 || item < 1 || item > 4 || HasFinished) return false;
+        HeldItem = item; return true;
+    }
+    public void TriggerPowerUp() => GiveItem(Random.Range(1, 5));
+    public void UseItem()
+    {
+        if (director == null || !director.Playing || HasFinished || Stunned) return;
+        int item = HeldItem; HeldItem = 0; lastUse = Time.time;
+        if (item == 1) ApplyBoost(2.5f);
+        if (item == 2 || item == 3) CrazyKartHazard.Spawn(this, item == 3);
+        if (item == 4) shieldUntil = Time.time + 6;
+    }
+    public void Hit()
+    {
+        if (Shielded) { shieldUntil = 0; return; }
+        if (Stunned || HasFinished || Time.time < hitProtectionUntil) return;
+        stunUntil = Time.time + 1.1f; hitProtectionUntil = stunUntil + .6f; boostUntil = 0; driftCharge = 0; wasDrifting = false;
+        if (body != null) body.linearVelocity *= .25f;
+        CrazyRaceBurst.Spawn(transform.position+Vector3.up*.6f,new Color(1,.25f,.15f),false);
+    }
+    public bool PassCheckpoint(int index, Vector3? gateForward = null)
+    {
+        if (director == null || !director.Playing || HasFinished || index != NextCheckpoint) return false;
+        Vector3 forward = gateForward ?? (director.GetWaypointPosition((index + 1) % director.Waypoints.Count) - director.GetWaypointPosition(index));
+        if (Vector3.Dot(body.linearVelocity, forward.normalized) <= .1f) return false;
+        CurrentCheckpoint = index;
+        if (index == 0) CurrentLap++;
+        if (CurrentLap > director.laps) { HasFinished = true; FinishTime = director.RoundTime; finishCoastUntil=Time.time+1.5f; body.detectCollisions=false; body.useGravity=false; director.Finish(this); }
+        return true;
+    }
+    void OnTriggerEnter(Collider other)
+    {
+        var cp = other.GetComponent<CrazyKartCheckpointIndex>(); if (cp != null) PassCheckpoint(cp.index,other.transform.forward);
+        var box = other.GetComponent<CrazyKartItemBox>(); if (box != null) box.Collect(this);
+        if (other.GetComponent<CrazyKartBoostPad>() != null) ApplyBoost(1.1f);
+    }
+}
+
+
+
+
+

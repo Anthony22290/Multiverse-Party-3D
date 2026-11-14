@@ -1,0 +1,18 @@
+PASS Race audio component added
+PASS Music and cue clips load from Resources
+PASS W on the 1 gives a perfect start boost (result=1)
+INFO bots with perfect start: 0/3
+PASS Pressing too early stalls (result=-1, speed=0,0)
+PASS Stall ends and the kart accelerates (speed=18,9)
+PASS Pause freezes time and shows the menu
+PASS Continue restores time, audio and hides the menu
+PASS Leader gets traps, last gets turbos and storms: leader trap=45 % last turbo+triple=49 % last trap=4 % last storm=8 %
+PASS Roulette blocks use while spinning
+PASS Triple turbo spends one charge at a time
+PASS Triple turbo empties after three uses
+PASS Pulse acquires the rival ahead
+PASS Homing pulse reaches an off-axis rival
+PASS Bot laps never set records
+PASS Human lap sets and saves a lap record
+PASS Slower lap keeps the record
+PASS Unfinished rivals get projected times: 300, 220, 203

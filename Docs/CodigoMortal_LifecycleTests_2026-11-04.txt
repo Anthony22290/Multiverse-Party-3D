@@ -1,0 +1,8 @@
+PASS Restart resets round and all participants
+PASS Out-of-map fall automatically recovers without elimination
+PASS Protector expires and does not recharge
+PASS Eliminated player spectates while rivals remain
+PASS Timer expiry produces draw with multiple survivors
+PASS Return to hub loads original hub
+PASS Fifth physical portal exists in hub
+PASS Hub selection enters CodigoMortal with new round

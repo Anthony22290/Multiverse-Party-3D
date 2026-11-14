@@ -1,0 +1,137 @@
+using System.Collections.Generic;
+using System.Linq;
+using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
+public sealed class CrazyKartDirector : MonoBehaviour
+{
+    [SerializeField] List<Vector3> waypoints = new List<Vector3>();
+    readonly List<CrazyKartController> karts = new List<CrazyKartController>();
+    readonly List<CrazyKartController> finishers = new List<CrazyKartController>();
+    public int laps = 3;
+    public float roadHalfWidth = 6;
+    float countdown = 3.5f;
+    CrazyKartShortcut[] shortcuts = new CrazyKartShortcut[0];
+    public CrazyKartShortcut Shortcut => shortcuts.Length > 0 ? shortcuts[0] : null;
+    public IReadOnlyList<CrazyKartShortcut> Shortcuts => shortcuts;
+    // Circuits reachable from the pause / results menu, in order.
+    public static readonly string[] Circuits = { "GranPremioMultiverso", "CarrerasLocas" };
+    public static string CircuitName(string scene) => scene == "GranPremioMultiverso" ? "GRAN PREMIO MULTIVERSO" : "COSTA DEL CAOS";
+    public float RoundTime { get; private set; }
+    public bool Finished { get; private set; }
+    public bool Playing => countdown <= 0 && !Finished;
+    public float Countdown => countdown;
+    public bool NaturalStart { get; private set; }
+    public bool Paused { get; private set; }
+    // Saved records (human only). NewRaceRecord/NewLapRecord flag this race's results.
+    // Records are kept per circuit (the original circuit keeps its historic keys).
+    static string Suffix => SceneManager.GetActiveScene().name == "CarrerasLocas" ? "" : "_" + SceneManager.GetActiveScene().name;
+    static string LapKey => "CarrerasLocas_RecordVuelta" + Suffix;
+    static string RaceKey => "CarrerasLocas_RecordCarrera" + Suffix;
+    public float RecordLap => PlayerPrefs.GetFloat(LapKey, 0);
+    public float RecordRace => PlayerPrefs.GetFloat(RaceKey, 0);
+    public bool NewLapRecord { get; private set; }
+    public bool NewRaceRecord { get; private set; }
+    public IReadOnlyList<CrazyKartController> Karts => karts;
+    public IReadOnlyList<CrazyKartController> Finishers => finishers;
+    public IReadOnlyList<Vector3> Waypoints => waypoints;
+    public void Register(CrazyKartController kart) { if (!karts.Contains(kart)) karts.Add(kart); }
+    public void AddWaypoint(Vector3 p) => waypoints.Add(p);
+    public Vector3 GetWaypointPosition(int i) => waypoints.Count == 0 ? Vector3.zero : waypoints[(i % waypoints.Count + waypoints.Count) % waypoints.Count];
+    void Start()
+    {
+        Application.runInBackground = true;
+        shortcuts=FindObjectsByType<CrazyKartShortcut>(FindObjectsSortMode.None);
+        if(GetComponent<CrazyRaceCelebration>()==null)gameObject.AddComponent<CrazyRaceCelebration>();
+        if(GetComponent<CrazyRaceAudio>()==null)gameObject.AddComponent<CrazyRaceAudio>();
+        if(GetComponent<CrazyRaceDressing>()==null)gameObject.AddComponent<CrazyRaceDressing>();
+        foreach (var k in FindObjectsByType<CrazyKartController>(FindObjectsSortMode.None)) Register(k);
+        if (waypoints.Count == 0)
+            foreach (var c in FindObjectsByType<CrazyKartCheckpointIndex>(FindObjectsSortMode.None).OrderBy(c=>c.index)) waypoints.Add(c.transform.position - Vector3.up);
+        if (GetComponent<CrazyKartHUD>() == null) gameObject.AddComponent<CrazyKartHUD>();
+    }
+    void Update()
+    {
+        var keys = Keyboard.current; var pad = Gamepad.current;
+        bool pausePressed = (keys != null && (keys.escapeKey.wasPressedThisFrame || keys.pKey.wasPressedThisFrame)) || (pad != null && pad.startButton.wasPressedThisFrame);
+        if (Finished)
+        {
+            if (keys != null && keys.escapeKey.wasPressedThisFrame) ReturnToHub();
+            if ((keys != null && keys.enterKey.wasPressedThisFrame) || (pad != null && pad.buttonSouth.wasPressedThisFrame)) Restart();
+            return;
+        }
+        if (pausePressed) SetPaused(!Paused);
+        if (Paused) return;
+        if (countdown > 0) { countdown -= Time.deltaTime; if (countdown <= 0) NaturalStart = true; return; }
+        RoundTime += Time.deltaTime;
+    }
+    public void Finish(CrazyKartController kart)
+    {
+        if (!finishers.Contains(kart)) finishers.Add(kart);
+        if (kart.IsHuman && (RecordRace <= 0 || kart.FinishTime < RecordRace)) { NewRaceRecord = true; PlayerPrefs.SetFloat(RaceKey, kart.FinishTime); PlayerPrefs.Save(); }
+        if (kart.IsHuman || finishers.Count == karts.Count)
+        {
+            Finished = true;
+            // Karts still racing get a projected time from their average pace so far.
+            float total = laps * Mathf.Max(1, waypoints.Count);
+            foreach (var k in karts) if (!k.HasFinished) k.EstimatedFinish = RoundTime * total / Mathf.Max(.5f, Progress(k));
+        }
+    }
+    public void ReportLap(CrazyKartController kart, float lapTime)
+    {
+        if (!kart.IsHuman || lapTime < 5) return;
+        if (RecordLap <= 0 || lapTime < RecordLap) { NewLapRecord = true; kart.LapRecordTime = Time.time; PlayerPrefs.SetFloat(LapKey, lapTime); PlayerPrefs.Save(); }
+    }
+    // Item odds depend on race position: leaders get defensive items, trailing karts get speed.
+    public int RollItem(CrazyKartController kart)
+    {
+        float p = karts.Count <= 1 ? .5f : (Position(kart) - 1) / (float)(karts.Count - 1);
+        float turbo = Mathf.Lerp(15, 45, p), pulse = Mathf.Lerp(15, 35, p), trap = Mathf.Lerp(45, 5, p), shield = Mathf.Lerp(25, 15, p);
+        float triple = Mathf.Lerp(0, 18, p), storm = p > .6f ? Mathf.Lerp(0, 10, (p - .6f) / .4f) : 0;
+        float r = Random.value * (turbo + pulse + trap + shield + triple + storm);
+        if ((r -= turbo) < 0) return 1;
+        if ((r -= pulse) < 0) return 2;
+        if ((r -= trap) < 0) return 3;
+        if ((r -= shield) < 0) return 4;
+        if ((r -= triple) < 0) return 5;
+        return 6;
+    }
+    public void SetPaused(bool paused)
+    {
+        if (Finished) paused = false;
+        if (paused == Paused) return;
+        Paused = paused; Time.timeScale = paused ? 0 : 1; AudioListener.pause = paused;
+    }
+    void OnDestroy() { if (Paused) { Time.timeScale = 1; AudioListener.pause = false; } }
+    public void Restart() { SetPaused(false); SceneManager.LoadScene(SceneManager.GetActiveScene().name); }
+    public string NextCircuit
+    {
+        get { int i = System.Array.IndexOf(Circuits, SceneManager.GetActiveScene().name); return Circuits[(i + 1 + Circuits.Length) % Circuits.Length]; }
+    }
+    public void SwitchCircuit() { SetPaused(false); SceneManager.LoadScene(NextCircuit); }
+    public void ReturnToHub() { SetPaused(false); SceneManager.LoadScene("MundoDeInicio"); }
+    public float Progress(CrazyKartController kart)
+    {
+        var a = GetWaypointPosition(kart.CurrentCheckpoint); var b = GetWaypointPosition(kart.NextCheckpoint);
+        float fraction = Mathf.Clamp01(Vector3.Dot(kart.transform.position - a, b - a) / Mathf.Max(.1f,(b-a).sqrMagnitude));
+        return (kart.CurrentLap - 1) * waypoints.Count + kart.CurrentCheckpoint + fraction;
+    }
+    public int Position(CrazyKartController kart)
+    {
+        if (kart.HasFinished) return finishers.IndexOf(kart) + 1;
+        return 1 + karts.Count(k=>k != kart && (k.HasFinished || Progress(k) > Progress(kart)));
+    }
+    public float DistanceToRoad(Vector3 p)
+    {
+        p.y=0; float best=float.MaxValue;
+        for(int i=0;i<waypoints.Count;i++)
+        {
+            Vector3 a=GetWaypointPosition(i), b=GetWaypointPosition(i+1); a.y=b.y=0;
+            float t=Mathf.Clamp01(Vector3.Dot(p-a,b-a)/Mathf.Max(.01f,(b-a).sqrMagnitude));
+            best=Mathf.Min(best,Vector3.Distance(p,Vector3.Lerp(a,b,t)));
+        }
+        foreach(var s in shortcuts)if(s!=null)best=Mathf.Min(best,s.RoadDistance(p,roadHalfWidth));
+        return best;
+    }
+}
+

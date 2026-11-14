@@ -1,0 +1,28 @@
+== antes ==
+quieto: Torso 67°/2cm  Head 128°/23cm  UpperArm.L 73°/10cm  LowerArm.L 70°/22cm  UpperArm.R 36°/-2cm  LowerArm.R 50°/0cm  UpperLeg.L 41°/2cm  LowerLeg.L 64°/3cm  UpperLeg.R 35°/1cm  LowerLeg.R 48°/4cm  
+   media 61,3° | inclinación torso cápsula 2°
+andando: Torso 81°/5cm  Head 139°/31cm  UpperArm.L 92°/11cm  LowerArm.L 97°/15cm  UpperArm.R 69°/5cm  LowerArm.R 108°/-2cm  UpperLeg.L 58°/3cm  LowerLeg.L 71°/5cm  UpperLeg.R 54°/2cm  LowerLeg.R 71°/1cm  
+   media 83,9° | inclinación torso cápsula 7°
+corriendo: Torso 69°/8cm  Head 127°/32cm  UpperArm.L 84°/11cm  LowerArm.L 95°/12cm  UpperArm.R 54°/11cm  LowerArm.R 86°/8cm  UpperLeg.L 73°/9cm  LowerLeg.L 86°/15cm  UpperLeg.R 89°/8cm  LowerLeg.R 87°/17cm  
+   media 85,1° | inclinación torso cápsula 6°
+== despues ==
+quieto: Torso 1°/2cm  Head 0°/2cm  UpperArm.L 3°/2cm  LowerArm.L 4°/3cm  UpperArm.R 2°/2cm  LowerArm.R 3°/2cm  UpperLeg.L 1°/2cm  LowerLeg.L 1°/2cm  UpperLeg.R 1°/2cm  LowerLeg.R 1°/2cm  
+   media 1,7° | inclinación torso cápsula 3°
+andando: Torso 2°/4cm  Head 2°/4cm  UpperArm.L 3°/4cm  LowerArm.L 4°/5cm  UpperArm.R 7°/4cm  LowerArm.R 8°/5cm  UpperLeg.L 10°/3cm  LowerLeg.L 11°/3cm  UpperLeg.R 8°/2cm  LowerLeg.R 11°/2cm  
+   media 6,4° | inclinación torso cápsula 6°
+corriendo: Torso 4°/8cm  Head 3°/8cm  UpperArm.L 5°/8cm  LowerArm.L 5°/8cm  UpperArm.R 11°/8cm  LowerArm.R 13°/8cm  UpperLeg.L 27°/8cm  LowerLeg.L 24°/12cm  UpperLeg.R 31°/8cm  LowerLeg.R 30°/14cm  
+   media 15,3° | inclinación torso cápsula 6°
+== despues ==
+quieto: Torso 1°/2cm  Head 0°/2cm  UpperArm.L 3°/2cm  LowerArm.L 4°/3cm  UpperArm.R 2°/2cm  LowerArm.R 3°/2cm  UpperLeg.L 1°/2cm  LowerLeg.L 1°/2cm  UpperLeg.R 1°/2cm  LowerLeg.R 1°/2cm  
+   media 1,7° | inclinación torso cápsula 3°
+andando: Torso 2°/4cm  Head 2°/4cm  UpperArm.L 3°/4cm  LowerArm.L 4°/5cm  UpperArm.R 7°/4cm  LowerArm.R 8°/5cm  UpperLeg.L 11°/3cm  LowerLeg.L 11°/3cm  UpperLeg.R 9°/2cm  LowerLeg.R 11°/3cm  
+   media 6,7° | inclinación torso cápsula 6°
+corriendo: Torso 3°/8cm  Head 3°/8cm  UpperArm.L 5°/8cm  LowerArm.L 5°/8cm  UpperArm.R 11°/8cm  LowerArm.R 13°/8cm  UpperLeg.L 24°/8cm  LowerLeg.L 24°/12cm  UpperLeg.R 30°/8cm  LowerLeg.R 28°/15cm  
+   media 14,5° | inclinación torso cápsula 6°
+== despues ==
+quieto: Torso 1°/2cm  Head 0°/2cm  UpperArm.L 3°/2cm  LowerArm.L 4°/3cm  UpperArm.R 2°/2cm  LowerArm.R 3°/2cm  UpperLeg.L 1°/2cm  LowerLeg.L 1°/2cm  UpperLeg.R 1°/2cm  LowerLeg.R 1°/2cm  
+   media 1,7° | inclinación torso cápsula 3°
+andando: Torso 2°/4cm  Head 2°/4cm  UpperArm.L 3°/4cm  LowerArm.L 4°/5cm  UpperArm.R 7°/4cm  LowerArm.R 8°/5cm  UpperLeg.L 11°/3cm  LowerLeg.L 11°/3cm  UpperLeg.R 8°/2cm  LowerLeg.R 11°/3cm  
+   media 6,7° | inclinación torso cápsula 6°
+corriendo: Torso 4°/7cm  Head 3°/7cm  UpperArm.L 5°/7cm  LowerArm.L 5°/8cm  UpperArm.R 11°/7cm  LowerArm.R 13°/8cm  UpperLeg.L 28°/9cm  LowerLeg.L 25°/13cm  UpperLeg.R 31°/8cm  LowerLeg.R 31°/15cm  
+   media 15,6° | inclinación torso cápsula 6°

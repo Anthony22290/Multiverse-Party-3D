@@ -1,0 +1,5 @@
+PASS Result button reloads a clean race with original roles
+PASS Moving pulse hits rival and ignores owner
+PASS Driving over trap applies impact
+PASS Entering physical boost-pad trigger activates turbo
+PASS Road barrier is a solid physical collider

@@ -1,0 +1,85 @@
+using UnityEngine;
+public sealed class CrazyKartHazard : MonoBehaviour
+{
+    CrazyKartController owner;
+    bool trap;
+    float expires;
+    Material material;
+    CrazyKartController target;
+    Material light;
+    static void Visual(Transform parent, PrimitiveType type, Vector3 pos, Vector3 size, Vector3 inv, Quaternion rot, Material mat)
+    {
+        var v = GameObject.CreatePrimitive(type); DestroyImmediate(v.GetComponent<Collider>());
+        v.transform.SetParent(parent, false); v.transform.localPosition = Vector3.Scale(pos, inv); v.transform.localRotation = rot;
+        v.transform.localScale = Vector3.Scale(size, inv); v.GetComponent<Renderer>().sharedMaterial = mat;
+    }
+    // Nearest rival ahead (within 60 m and a 50° cone) that a pulse will chase.
+    public static CrazyKartController FindTarget(CrazyKartController from)
+    {
+        var director = FindAnyObjectByType<CrazyKartDirector>();
+        if (director == null) return null;
+        CrazyKartController best = null; float bestDistance = 60;
+        foreach (var k in director.Karts)
+        {
+            if (k == from || k.HasFinished) continue;
+            Vector3 d = k.transform.position - from.transform.position; d.y = 0;
+            float dist = d.magnitude;
+            if (dist < bestDistance && dist > .5f && Vector3.Angle(from.transform.forward, d) < 50) { best = k; bestDistance = dist; }
+        }
+        return best;
+    }
+    public static void Spawn(CrazyKartController kart, bool isTrap)
+    {
+        var go = GameObject.CreatePrimitive(isTrap ? PrimitiveType.Cylinder : PrimitiveType.Sphere);
+        go.name = isTrap ? "Trampa de pista" : "Pulso de carrera";
+        go.transform.position = kart.transform.position + kart.transform.forward * (isTrap ? -3 : 3);
+        go.transform.position = new Vector3(go.transform.position.x, SurfaceHeight(go.transform.position)+(isTrap ? .18f : .7f), go.transform.position.z);
+        go.transform.localScale = isTrap ? new Vector3(2, .15f, 2) : Vector3.one * .9f;
+        go.GetComponent<Collider>().isTrigger = true;
+        var h = go.AddComponent<CrazyKartHazard>(); h.owner = kart; h.trap = isTrap; h.expires = Time.time + (isTrap ? 14 : 5);
+        if (isTrap)
+        {
+            // Spiked mine: the scaled trigger stays invisible; visuals are collider-free children.
+            go.GetComponent<Renderer>().enabled = false;
+            h.material = new Material(Shader.Find("Universal Render Pipeline/Lit")) { color = new Color(.25f,.08f,.38f) };
+            Vector3 inv = new Vector3(1/2f, 1/.15f, 1/2f);
+            Visual(go.transform, PrimitiveType.Sphere, new Vector3(0, .32f, 0), new Vector3(1.15f, .75f, 1.15f), inv, Quaternion.identity, h.material);
+            for (int i = 0; i < 8; i++)
+            {
+                float a = i * 45 * Mathf.Deg2Rad;
+                Visual(go.transform, PrimitiveType.Cube, new Vector3(Mathf.Cos(a) * .58f, .32f, Mathf.Sin(a) * .58f), new Vector3(.22f, .22f, .22f), inv, Quaternion.Euler(45, i * 45, 45), h.material);
+            }
+            h.light = CrazyRaceFX.Fresnel(new Color(1, .15f, .3f), false, .9f, 1.5f);
+            Visual(go.transform, PrimitiveType.Sphere, new Vector3(0, .72f, 0), Vector3.one * .3f, inv, Quaternion.identity, h.light);
+        }
+        else
+        {
+            h.material = CrazyRaceFX.Fresnel(new Color(.25f, .95f, 1), false, .55f, 2.2f); h.material.SetFloat("_Pulse", 1);
+            go.GetComponent<Renderer>().sharedMaterial = h.material;
+            h.target = FindTarget(kart);
+            var trail = go.AddComponent<TrailRenderer>(); trail.sharedMaterial = CrazyRaceFX.Glow; trail.time = .4f; trail.startWidth = .7f; trail.endWidth = 0; trail.minVertexDistance = .2f;
+            trail.startColor = new Color(.4f, .95f, 1, .9f); trail.endColor = new Color(.2f, .5f, 1, 0);
+        }
+        if (!isTrap) { var rb = go.AddComponent<Rigidbody>(); rb.useGravity = false; rb.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative; rb.linearVelocity = kart.transform.forward * 36; }
+    }
+    static float SurfaceHeight(Vector3 p)
+    {
+        float nearest=float.MaxValue,result=0;
+        foreach(var hit in Physics.RaycastAll(p+Vector3.up*5,Vector3.down,15,~0,QueryTriggerInteraction.Ignore))
+            if(hit.collider.GetComponentInParent<CrazyKartController>()==null && hit.distance<nearest){nearest=hit.distance;result=hit.point.y;}
+        return result;
+    }
+    void FixedUpdate(){if(!trap){var rb=GetComponent<Rigidbody>();var v=rb.linearVelocity;
+        if(target!=null&&!target.HasFinished){Vector3 flat=new Vector3(v.x,0,v.z);Vector3 to=target.transform.position-rb.position;to.y=0;
+            if(to.sqrMagnitude>.01f){flat=Vector3.RotateTowards(flat,to.normalized*flat.magnitude,150*Mathf.Deg2Rad*Time.fixedDeltaTime,0);v.x=flat.x;v.z=flat.z;}}v.y=Mathf.Clamp((SurfaceHeight(rb.position)+.7f-rb.position.y)/Time.fixedDeltaTime,-8,8);rb.linearVelocity=v;}}
+    void Update() { if (Time.time > expires) Destroy(gameObject); if (light != null) light.SetColor("_Color", Mathf.Repeat(Time.time * 2.5f, 1) < .5f ? new Color(1, .15f, .3f) : new Color(.35f, .05f, .1f)); }
+    void OnTriggerEnter(Collider other)
+    {
+        var kart = other.GetComponentInParent<CrazyKartController>();
+        if (kart == owner) return;
+        if (kart != null) { kart.Hit(); CrazyRaceFX.Shards(transform.position, 20, false, trap ? new Color(.85f, .35f, 1) : new Color(.4f, .95f, 1), 8); Destroy(gameObject); }
+        else if (!trap && !other.isTrigger) Destroy(gameObject);
+    }
+    void OnDestroy() { if (material != null) Destroy(material); if (light != null) Destroy(light); }
+}
+

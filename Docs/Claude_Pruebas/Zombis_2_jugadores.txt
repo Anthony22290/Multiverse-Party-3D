@@ -1,0 +1,17 @@
+Equipo: 2 jugadores
+PASS Oleada 1: 25 s de juego · camioneta 1/10 · bajas 5
+PASS Oleada 2: 35 s de juego · camioneta 2/10 · bajas 19
+PASS Oleada 3: 33 s de juego · camioneta 3/10 · bajas 25
+PASS Oleada 4: 46 s de juego · camioneta 4/10 · bajas 37
+PASS Oleada 5: 41 s de juego · camioneta 5/10 · bajas 52
+PASS Oleada 6: 41 s de juego · camioneta 6/10 · bajas 67
+PASS Oleada 7: 43 s de juego · camioneta 7/10 · bajas 87
+PASS Oleada 8: 53 s de juego · camioneta 8/10 · bajas 111
+PASS Oleada 9: 46 s de juego · camioneta 9/10 · bajas 128
+PASS Oleada 10: 52 s de juego · camioneta 10/10
+PASS Partida: estado Won, oleada 10/10, camioneta 10/10, 424 s de juego, 108 s reales
+PASS Jefes vistos: Gordo, Brazos, Costillas, Rey
+INFO máx. zombis a la vez 16 · bajas 150 · caídas del equipo 0
+INFO Tú: 69 zombis, 7 piezas, 0 reanimaciones, 0 caídas
+INFO Coral: 81 zombis, 3 piezas, 0 reanimaciones, 0 caídas
+PASS Resultados mostrados

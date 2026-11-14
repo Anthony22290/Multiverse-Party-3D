@@ -1,0 +1,27 @@
+using UnityEngine;
+using System.Collections.Generic;
+public sealed class CrazyKartWheels : MonoBehaviour
+{
+    struct Wheel {public Transform transform;public Quaternion rest;public Vector3 axle;public bool front;}
+    readonly List<Wheel> wheels=new List<Wheel>();
+    CrazyKartController kart;
+    Rigidbody body;
+    float roll;
+    void Start()
+    {
+        kart=GetComponent<CrazyKartController>();body=GetComponent<Rigidbody>();
+        foreach(var t in GetComponentsInChildren<Transform>())
+            if(t.name=="BackWheels"||t.name=="FrontWheel_L"||t.name=="FrontWheel_R")
+                wheels.Add(new Wheel{transform=t,rest=t.localRotation,axle=t.InverseTransformDirection(transform.right),front=t.name.StartsWith("Front")});
+    }
+    void LateUpdate()
+    {
+        float speed=Vector3.Dot(body.linearVelocity,transform.forward);
+        roll=Mathf.Repeat(roll+speed/.32f*Mathf.Rad2Deg*Time.deltaTime,360);
+        foreach(var w in wheels)
+        {
+            Vector3 up=w.transform.parent.InverseTransformDirection(transform.up);
+            w.transform.localRotation=Quaternion.AngleAxis(w.front?kart.Steering*24:0,up)*w.rest*Quaternion.AngleAxis(roll,w.axle);
+        }
+    }
+}

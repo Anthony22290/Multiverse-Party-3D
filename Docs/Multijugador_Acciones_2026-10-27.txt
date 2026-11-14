@@ -1,0 +1,13 @@
+PASS Two independent players connect for action checks
+PASS Round starts
+PASS Client jump produces vertical motion on the host
+PASS Client push displaces another player on the host
+PASS Pushed player movement is replicated
+PASS Fresh round isolates object physics from the push test
+PASS Client can grab a bucket
+PASS Lift moves the authoritative bucket upward
+PASS Throw launches the bucket across the deck
+PASS Thrown bucket position is replicated
+PASS Grab rejects out-of-range targets
+PASS Eliminated client sees the round result
+PASS Dead client cannot trigger push or jump

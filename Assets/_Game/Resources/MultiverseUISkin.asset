@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eea87a2056d4c5c43a4ca981f85fe217, type: 3}
+  m_Name: MultiverseUISkin
+  m_EditorClassIdentifier: Assembly-CSharp::MultiverseUISkin
+  display: {fileID: 12800000, guid: 6d9ffb4e6185638429a5d925046358cf, type: 3}
+  body: {fileID: 12800000, guid: 95e35af13298a42449408c4d7b84f9c2, type: 3}
+  click: {fileID: 8300000, guid: 3e8b04b391d6e9748bdc4d9d16c77ef8, type: 3}
+  hover: {fileID: 8300000, guid: bff6afdbb8c38c640a72ba3ed042c44b, type: 3}

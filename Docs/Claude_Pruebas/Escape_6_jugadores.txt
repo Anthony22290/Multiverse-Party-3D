@@ -1,0 +1,17 @@
+Equipo: 6 jugadores, 11 salas: RoomPipes, RoomJugs, RoomNumbers, RoomMirrors, RoomClock, RoomFootprints, RoomLanterns, RoomCipher, RoomLibrary, RoomSymbols, RoomPortal
+PASS Sala 1 Sala de las Tuberías: 13,7 s de juego
+PASS Sala 2 Fuente de las Medidas: 6,2 s de juego
+PASS Sala 3 Observatorio de los Números: 5,0 s de juego
+PASS Sala 4 Galería de Espejos: 12,0 s de juego
+PASS Sala 5 Vestíbulo del Reloj: 8,8 s de juego
+PASS Sala 6 Pasillo de las Huellas: 6,3 s de juego
+PASS Sala 7 Muro de los Faroles: 7,8 s de juego
+PASS Sala 8 Gabinete del Cifrado: 4,4 s de juego
+PASS Sala 9 Biblioteca del Código: 17,1 s de juego
+PASS Sala 10 Sala de los Símbolos: 10,4 s de juego
+PASS Sala 11 Portal del Multiverso: 13,4 s de juego
+PASS Torre completada: estado Won, sala activa 11, tiempo de juego 105 s de 1815
+PASS Todo el equipo llegó a la sala final (6/6)
+PASS Pantalla de resultados mostrada
+INFO Más útil: Coral (55 acciones)
+INFO Punto de partida para: Coral (9 salas)

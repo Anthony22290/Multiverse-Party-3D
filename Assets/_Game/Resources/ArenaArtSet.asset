@@ -1,0 +1,76 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9b1c4d11d86cc645bb3e3f2b1d5861e, type: 3}
+  m_Name: ArenaArtSet
+  m_EditorClassIdentifier: Assembly-CSharp::MultiverseArtSet
+  entries:
+  - key: flag
+    prefab: {fileID: 5011565259736682009, guid: 9e54db15975dfc34f8e6f8d44bd717de, type: 3}
+    atlas: 0
+    height: 0
+  - key: hut
+    prefab: {fileID: 3615678107933298466, guid: 6a3e839a2cd90f84fab5ee7b84bb2b47, type: 3}
+    atlas: 0
+    height: 0
+  - key: tower
+    prefab: {fileID: 8530805205063346710, guid: 25e75aa95e5f0424eb2ddc08f1a647e2, type: 3}
+    atlas: 0
+    height: 0
+  - key: lighthouse
+    prefab: {fileID: 2550135570466603486, guid: b8dd25322a53d9a468ab126293ebdf23, type: 3}
+    atlas: 0
+    height: 0
+  - key: rowboat
+    prefab: {fileID: 4447433162677985546, guid: f57d4b623108a544a934484d5bfe8622, type: 3}
+    atlas: 0
+    height: 0
+  - key: buoy
+    prefab: {fileID: 8296106207022202596, guid: 97146acbe7e434345b5c3c37789eb53c, type: 3}
+    atlas: 0
+    height: 0
+  - key: torch
+    prefab: {fileID: 2696006895775858841, guid: 21e4b65dd8876aa40a148f41f6dff0af, type: 3}
+    atlas: 0
+    height: 0
+  - key: treasure
+    prefab: {fileID: 564719619807807110, guid: 225dd7644e19cc5448ebf1780a25f55e, type: 3}
+    atlas: 0
+    height: 0
+  - key: pier
+    prefab: {fileID: 1390332993009071057, guid: 928a215b984a3b54e9dcbaddcb005da1, type: 3}
+    atlas: 0
+    height: 0
+  - key: shipSmall
+    prefab: {fileID: 919132149155446097, guid: 1f6cf3898f6b766419fb3c44b94faa2f, type: 3}
+    atlas: 1
+    height: 7
+  - key: house1
+    prefab: {fileID: 919132149155446097, guid: aff66ce2472acb7459de9a09fb81cc06, type: 3}
+    atlas: 1
+    height: 5
+  - key: house3
+    prefab: {fileID: 919132149155446097, guid: 94f3ab98d3baaea4a9b88d4264cf7d1b, type: 3}
+    atlas: 1
+    height: 5.5
+  - key: cliff
+    prefab: {fileID: 919132149155446097, guid: e096a41aef8191244bfc8d67e3e14f42, type: 3}
+    atlas: 1
+    height: 7
+  - key: dockPole
+    prefab: {fileID: 919132149155446097, guid: 04882388478c14a459bd508abb175c6e, type: 3}
+    atlas: 1
+    height: 2.2
+  - key: skulls
+    prefab: {fileID: 919132149155446097, guid: b05ab1b57a25f9a47936935432949a7b, type: 3}
+    atlas: 1
+    height: 0.8
+  atlas: {fileID: 2100000, guid: 7ca20d8d649058e4a492c308b5a1c5e7, type: 2}

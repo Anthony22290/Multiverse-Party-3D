@@ -1,0 +1,207 @@
+using System.Collections.Generic;
+using System.Linq;
+using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
+public sealed class CrazyKartDirector : MonoBehaviour
+{
+    [SerializeField] List<Vector3> waypoints = new List<Vector3>();
+    readonly List<CrazyKartController> karts = new List<CrazyKartController>();
+    readonly List<CrazyKartController> finishers = new List<CrazyKartController>();
+    public int laps = 3;
+    public float roadHalfWidth = 6;
+    float countdown = 3.5f;
+    CrazyKartShortcut[] shortcuts = new CrazyKartShortcut[0];
+    public CrazyKartShortcut Shortcut => shortcuts.Length > 0 ? shortcuts[0] : null;
+    public IReadOnlyList<CrazyKartShortcut> Shortcuts => shortcuts;
+    public const string CircuitTitle = "GRAN PREMIO MULTIVERSO";
+    public float RoundTime { get; private set; }
+    public bool Finished { get; private set; }
+    public bool Playing => countdown <= 0 && !Finished;
+    public float Countdown => countdown;
+    public bool NaturalStart { get; private set; }
+    public bool Paused { get; private set; }
+    // Saved records (human only). NewRaceRecord/NewLapRecord flag this race's results.
+    // Records for the Gran Premio circuit (keys differ from the retired small circuit's).
+    public const string LapKey = "CarrerasLocas_RecordVuelta_GP", RaceKey = "CarrerasLocas_RecordCarrera_GP";
+    public float RecordLap => PlayerPrefs.GetFloat(LapKey, 0);
+    public float RecordRace => PlayerPrefs.GetFloat(RaceKey, 0);
+    public bool NewLapRecord { get; private set; }
+    public bool NewRaceRecord { get; private set; }
+    public IReadOnlyList<CrazyKartController> Karts => karts;
+    public IReadOnlyList<CrazyKartController> Finishers => finishers;
+    public IReadOnlyList<Vector3> Waypoints => waypoints;
+    public void Register(CrazyKartController kart) { if (!karts.Contains(kart)) karts.Add(kart); }
+    public void AddWaypoint(Vector3 p) => waypoints.Add(p);
+    public Vector3 GetWaypointPosition(int i) => waypoints.Count == 0 ? Vector3.zero : waypoints[(i % waypoints.Count + waypoints.Count) % waypoints.Count];
+    readonly Dictionary<CrazyKartController, int> slots = new Dictionary<CrazyKartController, int>();
+    /// <summary>Online party match (2026-11-12).</summary>
+    public CrazyKartNet Net { get; private set; }
+    public int SlotOf(CrazyKartController k) => k != null && slots.TryGetValue(k, out int s) ? s : -1;
+    public CrazyKartController KartOfSlot(int slot) { foreach (var p in slots) if (p.Value == slot) return p.Key; return null; }
+    bool reported;
+
+    // The party decides who races (4–6): clone bot karts for extra players, name and paint every kart.
+    void Awake()
+    {
+        var roster = MultiverseParty.CurrentRoster();
+        var all = FindObjectsByType<CrazyKartController>(FindObjectsSortMode.None).ToList();
+        var human = all.FirstOrDefault(k => k.IsHuman);
+        if (human == null || all.Count < 2) return;
+        Vector3 fwd = human.transform.forward; fwd.y = 0; fwd.Normalize();
+        var bots = all.Where(k => !k.IsHuman).OrderByDescending(k => Vector3.Dot(k.transform.position, fwd)).ToList();
+        int want = Mathf.Clamp(roster.Count, 2, 6);
+        // Grid: two lanes, rows 5 m apart. Bots fill the front rows; the player starts in the second row.
+        var front = bots.Take(2).OrderBy(k => Vector3.Dot(k.transform.position, Vector3.Cross(Vector3.up, fwd))).ToList();
+        Vector3 laneA = front[0].transform.position, laneB = front.Count > 1 ? front[1].transform.position : laneA + Vector3.Cross(Vector3.up, fwd) * 5.2f;
+        float rowGap = 5.1f;
+        Vector3 Slot(int k) => (k % 2 == 0 ? laneA : laneB) - fwd * rowGap * (k / 2);
+        while (bots.Count + 1 < want)
+        {
+            var src = bots[bots.Count - 1];
+            var clone = Instantiate(src.gameObject, src.transform.parent);
+            bots.Add(clone.GetComponent<CrazyKartController>());
+        }
+        while (bots.Count + 1 > want) { var extra = bots[bots.Count - 1]; bots.RemoveAt(bots.Count - 1); extra.gameObject.SetActive(false); Destroy(extra.gameObject); }
+        if (want > 4)
+        {
+            int[] botSlots = { 0, 1, 2, 4, 5 };
+            for (int i = 0; i < bots.Count; i++) bots[i].transform.SetPositionAndRotation(Slot(botSlots[i]), human.transform.rotation);
+            human.transform.position = Slot(3);
+        }
+        slots[human] = 0;
+        Paint(human, roster.Names[0], roster.Colors[0]);
+        for (int i = 0; i < bots.Count; i++)
+        {
+            int slot = Mathf.Min(i + 1, roster.Count - 1);
+            slots[bots[i]] = i + 1;
+            Paint(bots[i], roster.Names[slot], roster.Colors[slot]);
+        }
+        // Online: the grid follows the party order, so every computer puts each racer on the same spot.
+        if (PartyLink.Active)
+        {
+            var rot = human.transform.rotation;
+            foreach (var pair in slots) { int m = PartyLink.MemberOfSlot(pair.Value); if (m >= 0) pair.Key.transform.SetPositionAndRotation(Slot(m), rot); }
+        }
+        // Online: other players' karts and (on clients) the bots are driven elsewhere.
+        foreach (var pair in slots) if (PartyLink.IsPuppet(pair.Value)) pair.Key.SetPuppet();
+    }
+
+    static void Paint(CrazyKartController kart, string name, Color color)
+    {
+        kart.DisplayName = name; kart.KartColor = color; kart.name = "Kart " + name;
+        foreach (var r in kart.GetComponentsInChildren<Renderer>(true))
+        {
+            var mats = r.sharedMaterials; bool changed = false;
+            for (int i = 0; i < mats.Length; i++)
+                if (mats[i] != null && (mats[i].name.StartsWith("CarPaint") || r.name == "Color piloto"))
+                { mats[i] = new Material(mats[i]) { name = "Pintura " + name, color = color }; changed = true; }
+            if (changed) r.sharedMaterials = mats;
+        }
+    }
+
+    void Start()
+    {
+        Application.runInBackground = true;
+        shortcuts=FindObjectsByType<CrazyKartShortcut>(FindObjectsSortMode.None);
+        if(GetComponent<CrazyRaceCelebration>()==null)gameObject.AddComponent<CrazyRaceCelebration>();
+        if(GetComponent<CrazyRaceAudio>()==null)gameObject.AddComponent<CrazyRaceAudio>();
+        if(GetComponent<CrazyRaceDressing>()==null)gameObject.AddComponent<CrazyRaceDressing>();
+        foreach (var k in FindObjectsByType<CrazyKartController>(FindObjectsSortMode.None)) Register(k);
+        if (waypoints.Count == 0)
+            foreach (var c in FindObjectsByType<CrazyKartCheckpointIndex>(FindObjectsSortMode.None).OrderBy(c=>c.index)) waypoints.Add(c.transform.position - Vector3.up);
+        if (GetComponent<CrazyKartHUD>() == null) gameObject.AddComponent<CrazyKartHUD>();
+        if (PartyLink.Active) { Net = gameObject.AddComponent<CrazyKartNet>(); Net.Init(this); }
+    }
+    void Update()
+    {
+        var keys = Keyboard.current; var pad = Gamepad.current;
+        bool pausePressed = (keys != null && (keys.escapeKey.wasPressedThisFrame || keys.pKey.wasPressedThisFrame)) || (pad != null && pad.startButton.wasPressedThisFrame);
+        if (Finished)
+        {
+            if (!reported && Net == null)
+            {
+                reported = true;
+                var winner = finishers.Count > 0 ? finishers[0] : karts.OrderBy(k => k.EstimatedFinish <= 0 ? float.MaxValue : k.EstimatedFinish).FirstOrDefault();
+                MultiverseParty.ReportMinigame(winner != null && slots.TryGetValue(winner, out int slot) ? slot : -1);
+            }
+            if (MultiverseParty.InMatch) return;
+            if (keys != null && keys.escapeKey.wasPressedThisFrame) ReturnToHub();
+            if ((keys != null && keys.enterKey.wasPressedThisFrame) || (pad != null && pad.buttonSouth.wasPressedThisFrame)) Restart();
+            return;
+        }
+        if (pausePressed && Net == null) SetPaused(!Paused);
+        if (Paused) return;
+        if (countdown > 0) { if (Net != null && !Net.Started) return; countdown -= Time.deltaTime; if (countdown <= 0) NaturalStart = true; return; }
+        RoundTime += Time.deltaTime;
+    }
+    public void Finish(CrazyKartController kart)
+    {
+        if (!finishers.Contains(kart)) { finishers.Add(kart); finishers.Sort((a, b) => a.FinishTime.CompareTo(b.FinishTime)); }
+        if (kart.IsHuman && (RecordRace <= 0 || kart.FinishTime < RecordRace)) { NewRaceRecord = true; PlayerPrefs.SetFloat(RaceKey, kart.FinishTime); PlayerPrefs.Save(); }
+        if (Net != null) return;   // online: the host ends the race for everybody (CrazyKartNet)
+        if (kart.IsHuman || finishers.Count == karts.Count) EndRace();
+    }
+    public void EndRace()
+    {
+        if (Finished) return;
+        {
+            Finished = true;
+            // Karts still racing get a projected time from their average pace so far.
+            float total = laps * Mathf.Max(1, waypoints.Count);
+            foreach (var k in karts) if (!k.HasFinished) k.EstimatedFinish = RoundTime * total / Mathf.Max(.5f, Progress(k));
+        }
+    }
+    public void ReportLap(CrazyKartController kart, float lapTime)
+    {
+        if (!kart.IsHuman || lapTime < 5) return;
+        if (RecordLap <= 0 || lapTime < RecordLap) { NewLapRecord = true; kart.LapRecordTime = Time.time; PlayerPrefs.SetFloat(LapKey, lapTime); PlayerPrefs.Save(); }
+    }
+    // Item odds depend on race position: leaders get defensive items, trailing karts get speed.
+    public int RollItem(CrazyKartController kart)
+    {
+        float p = karts.Count <= 1 ? .5f : (Position(kart) - 1) / (float)(karts.Count - 1);
+        float turbo = Mathf.Lerp(15, 45, p), pulse = Mathf.Lerp(15, 35, p), trap = Mathf.Lerp(45, 5, p), shield = Mathf.Lerp(25, 15, p);
+        float triple = Mathf.Lerp(0, 18, p), storm = p > .6f ? Mathf.Lerp(0, 10, (p - .6f) / .4f) : 0;
+        float r = Random.value * (turbo + pulse + trap + shield + triple + storm);
+        if ((r -= turbo) < 0) return 1;
+        if ((r -= pulse) < 0) return 2;
+        if ((r -= trap) < 0) return 3;
+        if ((r -= shield) < 0) return 4;
+        if ((r -= triple) < 0) return 5;
+        return 6;
+    }
+    public void SetPaused(bool paused)
+    {
+        if (Finished) paused = false;
+        if (paused == Paused) return;
+        Paused = paused; Time.timeScale = paused ? 0 : 1; AudioListener.pause = paused;
+    }
+    void OnDestroy() { if (Paused) { Time.timeScale = 1; AudioListener.pause = false; } }
+    public void Restart() { SetPaused(false); if (!MultiverseParty.InMatch) SceneManager.LoadScene(SceneManager.GetActiveScene().name); }
+    public void ReturnToHub() { SetPaused(false); if (!MultiverseParty.InMatch) SceneManager.LoadScene("MundoDeInicio"); }
+    public float Progress(CrazyKartController kart)
+    {
+        var a = GetWaypointPosition(kart.CurrentCheckpoint); var b = GetWaypointPosition(kart.NextCheckpoint);
+        float fraction = Mathf.Clamp01(Vector3.Dot(kart.transform.position - a, b - a) / Mathf.Max(.1f,(b-a).sqrMagnitude));
+        return (kart.CurrentLap - 1) * waypoints.Count + kart.CurrentCheckpoint + fraction;
+    }
+    public int Position(CrazyKartController kart)
+    {
+        if (kart.HasFinished) return finishers.IndexOf(kart) + 1;
+        return 1 + karts.Count(k=>k != kart && (k.HasFinished || Progress(k) > Progress(kart)));
+    }
+    public float DistanceToRoad(Vector3 p)
+    {
+        p.y=0; float best=float.MaxValue;
+        for(int i=0;i<waypoints.Count;i++)
+        {
+            Vector3 a=GetWaypointPosition(i), b=GetWaypointPosition(i+1); a.y=b.y=0;
+            float t=Mathf.Clamp01(Vector3.Dot(p-a,b-a)/Mathf.Max(.01f,(b-a).sqrMagnitude));
+            best=Mathf.Min(best,Vector3.Distance(p,Vector3.Lerp(a,b,t)));
+        }
+        foreach(var s in shortcuts)if(s!=null)best=Mathf.Min(best,s.RoadDistance(p,roadHalfWidth));
+        return best;
+    }
+}
+

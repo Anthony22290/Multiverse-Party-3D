@@ -1,0 +1,5 @@
+PASS Full three-lap race, finishers=4, time=89,9, frames=3885, maxY=5,07, maxSpeed=30,73
+1. Rayo lap=4 cp=0 finish=53,6
+2. Coral lap=4 cp=0 finish=53,7
+3. Menta lap=4 cp=0 finish=73,1
+4. Tú lap=4 cp=0 finish=89,9

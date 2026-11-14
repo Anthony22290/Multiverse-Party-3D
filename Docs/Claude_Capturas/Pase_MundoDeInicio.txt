@@ -1,0 +1,18 @@
+MundoDeInicio: 72 piezas colocadas, 17 descartadas por seguridad, 0 textos mejorados, 72 renderers, 30472 triángulos añadidos
+descartado Farola en (-31,3, -2): sin suelo válido
+descartado Farola en (-31,3, 34): sin suelo válido
+descartado Farola en (-12, -9): choca con Pasarela al código
+descartado Farola en (-20, -9): sin suelo válido
+descartado Banco en (-31,6, -13): choca con Farola
+descartado Banco en (-31,6, 3): choca con Environment_PalmTree_1(Clone)
+descartado Farola en (31,3, -2): sin suelo válido
+descartado Farola en (31,3, 34): sin suelo válido
+descartado Farola en (20, -9): sin suelo válido
+descartado Banco en (31,6, -13): choca con Farola
+descartado Estandarte Zombis en (-5,3, 21): choca con Decorado Zombie_Basic
+descartado Arbusto en (9, -28,2): choca con Borde frontal
+descartado Arbusto en (-28, -28,2): choca con Borde frontal
+descartado Arbusto en (-36,2, 30): choca con Poste perimetral
+descartado Arbusto en (36,2, 30): choca con Poste perimetral
+descartado Arbusto en (-36,2, 0): choca con Poste perimetral
+descartado Arbusto en (36,2, 0): choca con Borde lateral

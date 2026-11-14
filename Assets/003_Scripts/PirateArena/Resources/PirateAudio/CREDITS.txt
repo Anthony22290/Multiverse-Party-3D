@@ -1,0 +1,19 @@
+CREDITS / ATRIBUCIÓN - Sonidos de pasos del arena pirata
+
+Clips: step_wood_000.ogg, step_wood_001.ogg, step_wood_002.ogg,
+       step_wood_003.ogg, step_wood_004.ogg
+       step_stone_000.ogg, step_stone_001.ogg, step_stone_002.ogg
+
+Fuente (pack original): Kenney - "Impact Sounds"
+  URL: https://kenney.nl/assets/impact-sounds
+  Archivos originales del pack:
+    Audio/footstep_wood_000.ogg .. Audio/footstep_wood_004.ogg
+    Audio/footstep_concrete_000.ogg .. Audio/footstep_concrete_002.ogg
+  (renombrados a step_wood_*/step_stone_* en este proyecto)
+
+Licencia: CC0 1.0 Universal (Public Domain Dedication)
+  https://creativecommons.org/publicdomain/zero/1.0/
+  Autor: Kenney (www.kenney.nl)
+
+La licencia CC0 no exige atribución, pero se agradece el crédito.
+Los clips se distribuyen sin modificaciones de contenido (solo renombrado).

@@ -1,0 +1,100 @@
+using System.Linq;
+using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.UI;
+public sealed class CrazyKartHUD : MonoBehaviour
+{
+    CrazyKartDirector director;
+    UnityEngine.UI.Text status, item, banner, results;
+    GameObject resultPanel;
+    RectTransform map;
+    RectTransform[] markers;
+    Font font;
+    UnityEngine.UI.Image driftFill;
+    UnityEngine.UI.Text notice;
+    int previousLap=1;
+    float lapNoticeUntil;
+    UnityEngine.UI.Image itemIcon;
+    UnityEngine.UI.Text itemHelp;
+    Sprite[] itemSprites;
+    int previousItem;
+    float itemFlashUntil;
+    RectTransform Rect(string name, Transform parent, Vector2 anchor, Vector2 pos, Vector2 size)
+    {
+        var r = new GameObject(name, typeof(RectTransform)).GetComponent<RectTransform>();
+        r.SetParent(parent, false); r.anchorMin=r.anchorMax=anchor; r.anchoredPosition=pos; r.sizeDelta=size; return r;
+    }
+    UnityEngine.UI.Text Label(string name,Transform parent,Vector2 anchor,Vector2 pos,Vector2 size,int pt)
+    {
+        var t=Rect(name,parent,anchor,pos,size).gameObject.AddComponent<UnityEngine.UI.Text>();
+        t.font=font;t.fontSize=pt;t.fontStyle=FontStyle.Bold;t.color=Color.white;t.alignment=TextAnchor.MiddleCenter;t.raycastTarget=false;return t;
+    }
+    void Panel(RectTransform r,Color c) { r.gameObject.AddComponent<UnityEngine.UI.Image>().color=c; }
+    void Start()
+    {
+        director=GetComponent<CrazyKartDirector>();
+        font=Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        var canvas=new GameObject("HUD Carreras",typeof(Canvas),typeof(UnityEngine.UI.CanvasScaler),typeof(UnityEngine.UI.GraphicRaycaster));
+        canvas.transform.SetParent(transform,false);canvas.GetComponent<Canvas>().renderMode=RenderMode.ScreenSpaceOverlay;
+        var scaler=canvas.GetComponent<UnityEngine.UI.CanvasScaler>();scaler.uiScaleMode=UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;scaler.referenceResolution=new Vector2(1280,720);scaler.matchWidthOrHeight=.5f;
+        if(FindAnyObjectByType<EventSystem>()==null)new GameObject("EventSystem",typeof(EventSystem),typeof(InputSystemUIInputModule));
+        var top=Rect("Panel carrera",canvas.transform,new Vector2(0,1),new Vector2(175,-75),new Vector2(320,120));Panel(top,new Color(.09f,.04f,.2f,.92f));
+        status=Label("Posicion y vueltas",top,new Vector2(.5f,.5f),Vector2.zero,new Vector2(300,110),25);
+        var bottom=Rect("Controles",canvas.transform,new Vector2(.5f,0),new Vector2(0,26),new Vector2(1000,40));Panel(bottom,new Color(.09f,.04f,.2f,.9f));
+        Label("Ayuda",bottom,new Vector2(.5f,.5f),Vector2.zero,new Vector2(990,38),17).text="WASD / Flechas  Conducir    SHIFT  Derrapar    ESPACIO / F  Objeto    R  Volver a pista    ESC  Plaza";
+        var slot=Rect("Objeto",canvas.transform,new Vector2(0,0),new Vector2(185,155),new Vector2(340,185));Panel(slot,new Color(.24f,.07f,.4f,.92f));
+        item=Label("Estado objeto",slot,new Vector2(.5f,.5f),new Vector2(38,30),new Vector2(245,75),20);
+        itemSprites=new Sprite[5];for(int i=0;i<5;i++)itemSprites[i]=CrazyKartItemArt.Icon(i);
+        itemIcon=Rect("Icono objeto",slot,new Vector2(0,.5f),new Vector2(45,30),new Vector2(58,58)).gameObject.AddComponent<UnityEngine.UI.Image>();itemIcon.preserveAspect=true;itemIcon.raycastTarget=false;
+        itemHelp=Label("Uso del objeto",slot,new Vector2(.5f,.5f),new Vector2(0,-40),new Vector2(310,60),17);
+        var track=Rect("Carga derrape",slot,new Vector2(.5f,0),new Vector2(0,10),new Vector2(280,8));Panel(track,new Color(.05f,.03f,.1f));
+        var fill=Rect("Progreso derrape",track,new Vector2(0,.5f),Vector2.zero,new Vector2(0,8));fill.pivot=new Vector2(0,.5f);driftFill=fill.gameObject.AddComponent<UnityEngine.UI.Image>();
+        notice=Label("Avisos",canvas.transform,new Vector2(.5f,1),new Vector2(0,-48),new Vector2(490,60),30);notice.color=new Color(1,.85f,.2f);
+        banner=Label("Cuenta atras",canvas.transform,new Vector2(.5f,.5f),new Vector2(0,100),new Vector2(700,150),64);banner.color=new Color(1,.86f,.2f);
+        map=Rect("Minimapa",canvas.transform,Vector2.one,new Vector2(-110,-120),new Vector2(180,210));Panel(map,new Color(.09f,.04f,.2f,.88f));
+        for(int i=0;i<director.Waypoints.Count;i++) { Vector2 a=Map(director.GetWaypointPosition(i)), b=Map(director.GetWaypointPosition(i+1));var line=Rect("Pista",map,new Vector2(.5f,.5f),(a+b)*.5f,new Vector2(Vector2.Distance(a,b)+1,5));line.localRotation=Quaternion.Euler(0,0,Mathf.Atan2(b.y-a.y,b.x-a.x)*Mathf.Rad2Deg);Panel(line,new Color(.6f,.7f,.8f)); }
+        if(director.Shortcut!=null){var a=Map(director.Shortcut.start);var b=Map(director.Shortcut.end);var line=Rect("Atajo",map,new Vector2(.5f,.5f),(a+b)*.5f,new Vector2(Vector2.Distance(a,b),3));line.localRotation=Quaternion.Euler(0,0,Mathf.Atan2(b.y-a.y,b.x-a.x)*Mathf.Rad2Deg);Panel(line,Color.yellow);}
+        Label("Sonido",map,new Vector2(.5f,0),new Vector2(0,12),new Vector2(170,22),12).text="M · SONIDO ON / OFF";
+        markers=new RectTransform[director.Karts.Count];
+        for(int i=0;i<markers.Length;i++){markers[i]=Rect("Corredor",map,new Vector2(.5f,.5f),Vector2.zero,new Vector2(11,11));Panel(markers[i],director.Karts[i].KartColor);}
+        var panel=Rect("Resultados",canvas.transform,new Vector2(.5f,.5f),Vector2.zero,new Vector2(600,380));Panel(panel,new Color(.08f,.03f,.17f,.97f));resultPanel=panel.gameObject;
+        results=Label("Clasificacion",panel,new Vector2(.5f,.5f),new Vector2(0,65),new Vector2(560,220),28);
+        Button(panel,"OTRA CARRERA",new Vector2(-140,-120),director.Restart);
+        Button(panel,"VOLVER A PLAZA",new Vector2(140,-120),director.ReturnToHub);
+        resultPanel.SetActive(false);
+        MultiverseUI.Skin(canvas,MultiverseUI.Mode.Race);
+    }
+    void Button(Transform parent,string text,Vector2 pos,UnityEngine.Events.UnityAction action)
+    {
+        var r=Rect(text,parent,new Vector2(.5f,.5f),pos,new Vector2(255,52));Panel(r,new Color(.85f,.16f,.46f));
+        var b=r.gameObject.AddComponent<UnityEngine.UI.Button>();b.onClick.AddListener(action);
+        Label(text,r,new Vector2(.5f,.5f),Vector2.zero,new Vector2(250,50),21).text=text;
+    }
+    void OnDestroy(){if(itemSprites!=null)foreach(var sprite in itemSprites)if(sprite!=null){Destroy(sprite.texture);Destroy(sprite);}}
+    Vector2 Map(Vector3 p){float x=1,z=1;foreach(var point in director.Waypoints){x=Mathf.Max(x,Mathf.Abs(point.x));z=Mathf.Max(z,Mathf.Abs(point.z));}return new Vector2(p.x*75/x,p.z*82/z);}
+    void Update()
+    {
+        if(director==null||status==null)return;
+        var player=director.Karts.FirstOrDefault(k=>k.IsHuman)??director.Karts.FirstOrDefault();
+        if(player==null)return;
+        status.text="CARRERAS LOCAS\n"+director.Position(player)+" / "+director.Karts.Count+"    VUELTA "+Mathf.Min(player.CurrentLap,director.laps)+"/"+director.laps+"\n"+director.RoundTime.ToString("F1")+" s     "+(player.Speed*3.6f).ToString("F0")+" km/h";
+        item.text=player.ItemName+"\n"+(player.Stunned?"¡IMPACTO!":player.Shielded?"ESCUDO ACTIVO":player.Boosting?"¡TURBO!":player.NitroAmount>=45?"SUELTA SHIFT: MINITURBO":player.NitroAmount>0?"CARGANDO DERRAPE":player.HeldItem>0?"OBJETO PREPARADO":"BUSCA UNA CAJA");
+        itemIcon.sprite=itemSprites[player.HeldItem];itemIcon.color=CrazyKartItemArt.ColorFor(player.HeldItem);
+        if(previousItem!=player.HeldItem){previousItem=player.HeldItem;itemFlashUntil=Time.time+.5f;}
+        itemIcon.rectTransform.localScale=Vector3.one*(1+Mathf.Max(0,itemFlashUntil-Time.time)*.3f);
+        itemHelp.text=CrazyKartItemArt.Help[player.HeldItem]+(player.HeldItem==0?"":"\nESPACIO / F para usar");
+        banner.text=director.Countdown>0?Mathf.CeilToInt(director.Countdown).ToString():director.RoundTime<1?"¡SALIDA!":"";
+        for(int i=0;i<markers.Length;i++)markers[i].anchoredPosition=Map(director.Karts[i].transform.position);
+        driftFill.rectTransform.sizeDelta=new Vector2(280*player.NitroAmount/100,8);
+        driftFill.color=player.NitroAmount>=100?new Color(1,.8f,.1f):Color.cyan;
+        if(player.CurrentLap!=previousLap){previousLap=player.CurrentLap;lapNoticeUntil=Time.time+2.5f;}
+        notice.text=director.Finished?"":Time.time-player.LastRecoveryTime<1.3f?"DE VUELTA EN PISTA":player.WrongWay?"¡SENTIDO CONTRARIO!":Time.time<lapNoticeUntil?(player.CurrentLap==director.laps?"¡ÚLTIMA VUELTA!":"VUELTA "+player.CurrentLap):"";
+        resultPanel.SetActive(director.Finished);
+        if(director.Finished)results.text="¡"+(director.Finishers.Count>0?director.Finishers[0].DisplayName.ToUpper():"")+" GANA!\n"+string.Join("\n",director.Karts.OrderBy(k=>director.Position(k)).Select(k=>director.Position(k)+". "+k.DisplayName+(k.HasFinished?"  "+k.FinishTime.ToString("F1")+" s":"  En pista")));
+    }
+}
+
+
+
+
+

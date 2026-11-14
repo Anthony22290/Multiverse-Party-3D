@@ -1,0 +1,22 @@
+PASS Host and client connect to the same private Photon room
+PASS Distinct ownership: host slot 0, client slot 1
+PASS Lobby waits for the host
+PASS Client cannot start the authoritative round
+PASS Countdown completes on both peers
+PASS Client menu closes when host starts
+PASS Client controls move its authoritative fighter
+PASS Client sees authoritative movement
+PASS Client grabs another player on host
+PASS Lift state reaches both peers
+PASS Release removes grab on both peers
+PASS Same winner and elimination on host and client
+PASS Client cannot restart a finished round
+PASS Host restart resets all six fighters on both peers
+PASS Second countdown completes
+PASS Cannon warning is replicated
+PASS Cannon projectile is replicated
+PASS Both views agree on shark position
+PASS Client disconnect returns control to a bot
+PASS Disconnected client returns to local mode
+PASS Client rejoins the existing room and reclaims a slot
+PASS Host exit closes the client session and opens the menu

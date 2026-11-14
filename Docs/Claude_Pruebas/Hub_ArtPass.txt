@@ -1,0 +1,15 @@
+PASS Paseo este-oeste: recorrido 66,0 m, distancia final al destino 0,25 m, pies y=0,92
+PASS Paseo este-oeste (vuelta): recorrido 66,0 m, distancia final al destino 0,25 m, pies y=0,92
+PASS Paseo norte (desde la exhibición espacial, que ya ocupaba el oeste): recorrido 47,0 m, distancia final al destino 0,25 m, pies y=0,92
+PASS Paseo lateral oeste (hasta la exhibición espacial): recorrido 32,5 m, distancia final al destino 0,25 m, pies y=0,92
+PASS Paseo lateral este: recorrido 39,0 m, distancia final al destino 0,25 m, pies y=1,10
+PASS Calle del mercado: recorrido 46,0 m, distancia final al destino 0,23 m, pies y=0,84
+PASS Hacia portal Carreras: recorrido 11,0 m, distancia final al destino 0,30 m, pies y=1,10
+PASS Hacia portal Código Mortal: recorrido 16,3 m, distancia final al destino 0,27 m, pies y=0,93
+PASS Plaza de inicio a portal pirata por su pasarela: recorrido 18,0 m, distancia final al destino 0,29 m, pies y=1,15
+PASS Plaza de inicio a portal criaturas (hasta las rocas originales): recorrido 14,4 m, distancia final al destino 0,28 m, pies y=1,02
+PASS Plaza de inicio a isla zombi: recorrido 16,5 m, distancia final al destino 0,25 m, pies y=1,08
+PASS Jardín sur: recorrido 60,0 m, distancia final al destino 0,23 m, pies y=0,84
+PASS Raíz de decorado presente: 62 colisionadores
+PASS Ningún colisionador decorativo invade paseos o pasarelas
+PASS Coste geométrico del decorado: 2880 triángulos (límite de revisión 60k)

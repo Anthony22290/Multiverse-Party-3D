@@ -1,0 +1,12 @@
+PASS Sala creada EDAABF
+PASS Partida iniciada · 4 miembros (3 bots)
+PASS CÓDIGO MORTAL: PartyLink activo · semilla 1559004105 · OK corriendo=True cuenta=0,0 vivos=4/4 títeres=0
+PASS Ronda 1 resuelta: Anfitrion gana CÓDIGO MORTAL · +1 punto
+PASS CARRERAS LOCAS: PartyLink activo · semilla 1111029571 · OK empezó=True carrera=10,5s karts=4 títeres=0 velmax=21,5
+PASS Ronda 2 resuelta: Anfitrion gana CARRERAS LOCAS · +1 punto
+PASS ARENA DEL CAOS: PartyLink activo · semilla 1712387097 · OK red=True jugando=True terminada=False piratas=4
+PASS Ronda 3 resuelta: Anfitrion gana ARENA DEL CAOS · +1 punto
+PASS INVASIÓN ZOMBI: PartyLink activo · semilla 2123407075 · OK fase=Wave oleada=1 zombis=7 ids=7 equipo=4
+PASS Ronda 4 resuelta: Anfitrion gana INVASIÓN ZOMBI · +1 punto
+PASS SALA DE ESCAPE: PartyLink activo · semilla 1719696255 · OK fase=Playing sala=1/11 interactuables=55 actores=4
+PASS Ronda 5 resuelta: ¡Anfitrion llega a 5 puntos!

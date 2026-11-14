@@ -1,0 +1,11 @@
+PASS Presentation component active
+PASS Original engine loop playing
+PASS Shield visible on kart
+PASS Impact visible on kart
+PASS Interrupting drift while stunned cannot award turbo
+PASS Recovery protection prevents immediate stun chain
+PASS Impact applies again after protection ends
+PASS Boost activates visible wheel trails
+PASS Follow camera stays on near side of obstruction
+PASS Last-lap notice appears
+PASS Drift charge bar exists

@@ -1,0 +1,3 @@
+PASS CodigoMortal: decorado presente, 0 colisionadores
+PASS CodigoMortal: sin solapes con pista, rutas o volúmenes de juego
+INFO CodigoMortal: 4550 triángulos decorativos (mallas de origen, antes del batching estático)

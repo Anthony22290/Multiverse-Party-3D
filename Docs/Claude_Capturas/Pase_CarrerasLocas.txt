@@ -1,0 +1,5 @@
+CarrerasLocas: 53 piezas colocadas, 4 descartadas por seguridad, 0 textos mejorados, 53 renderers, 25830 triángulos añadidos
+descartado Boxes en (20,7, 84,1): zona reservada (ruta/pista/juego)
+descartado Bandera a cuadros en (0, 110,6): choca con Columna meta
+descartado Bandera a cuadros en (0, 93,4): choca con Columna meta
+descartado Valla publicitaria Helados en (50,5, -78,8): choca con Soporte señal

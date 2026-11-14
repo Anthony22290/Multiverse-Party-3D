@@ -6,7 +6,25 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/001_Scenes/SampleScene.unity
-    guid: 99c9720ab356a0642a771bea13969a05
+    path: Assets/001_Scenes/MenuPrincipal.unity
+    guid: 7392843cec3716c47929de8d250aa87a
+  - enabled: 1
+    path: Assets/001_Scenes/MundoDeInicio.unity
+    guid: c720f4eac4cad9141b26d51377ed66dd
+  - enabled: 1
+    path: Assets/001_Scenes/ArenaDelCaos.unity
+    guid: 439e9984514d4b97a3364d7409d1128f
+  - enabled: 1
+    path: Assets/001_Scenes/InvasionZombi.unity
+    guid: 45b862c38cc85ba4685dadb2eb4e7f82
+  - enabled: 1
+    path: Assets/001_Scenes/CarrerasLocas.unity
+    guid: 512c2c427f092c342a2cf6d7b1e9e919
+  - enabled: 1
+    path: Assets/001_Scenes/CodigoMortal.unity
+    guid: 2e62f756a21ba724cabaca3de984af85
+  - enabled: 1
+    path: Assets/001_Scenes/SalaDeEscape.unity
+    guid: 52ceda1d4c4f82949a9781876316296d
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}

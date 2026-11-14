@@ -1,0 +1,26 @@
+[Brazos forma] IN_PROGRESS 18%
+[Brazos forma] IN_PROGRESS 45%
+[Brazos forma] IN_PROGRESS 72%
+[Brazos forma] IN_PROGRESS 88%
+[Brazos forma] IN_PROGRESS 88%
+[Brazos forma] SUCCEEDED 100%
+[Brazos textura] IN_PROGRESS 0%
+[Brazos textura] IN_PROGRESS 47%
+[Brazos textura] IN_PROGRESS 47%
+[Brazos textura] IN_PROGRESS 99%
+[Brazos textura] IN_PROGRESS 99%
+[Brazos textura] SUCCEEDED 100%
+  descargado thumb.png 74 KB
+  descargado textured.glb 2547 KB
+[Brazos rig] IN_PROGRESS 1%
+[Brazos rig] IN_PROGRESS 36%
+[Brazos rig] SUCCEEDED 100%
+  descargado rigged_character_fbx.fbx 2809 KB
+  descargado rigged_character_glb.glb 2965 KB
+  descargado basic_animations_walking_glb.glb 2946 KB
+  descargado basic_animations_walking_fbx.fbx 2844 KB
+  descargado basic_animations_walking_armature_glb.glb 87 KB
+  descargado basic_animations_running_glb.glb 2935 KB
+  descargado basic_animations_running_fbx.fbx 2828 KB
+  descargado basic_animations_running_armature_glb.glb 77 KB
+LISTO Brazos creditos rig: 5

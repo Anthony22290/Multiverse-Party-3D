@@ -1,0 +1,5 @@
+PASS Full AI race, finishers=4/4, time=252,5, maxSpeed=30,7, impacts=36, autoRecoveries=0, slipstreamBoosts=9
+1. Menta finish=213,8 bestLap=67,8 start=0 slips=4
+2. Coral finish=215,6 bestLap=64,6 start=0 slips=4
+3. Tú finish=225,0 bestLap=72,4 start=0 slips=0
+4. Rayo finish=252,5 bestLap=60,5 start=1 slips=1

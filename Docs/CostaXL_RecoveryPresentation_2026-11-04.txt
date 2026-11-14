@@ -1,0 +1,3 @@
+PASS Camera immediately returns above road on recovery
+PASS Respawn clears trails instead of drawing through deck
+PASS HUD explains automatic recovery

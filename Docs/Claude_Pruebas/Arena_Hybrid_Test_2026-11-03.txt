@@ -1,0 +1,15 @@
+PASS Active physical puppet initialized
+PASS Jump rises and lands: height=1,02, maxVy=4,23
+PASS 6m fall lands without relaunch: upward=0,00, y=3,87
+PASS One combat hit does not KO
+PASS Three close hits cause temporary KO, not elimination
+PASS KO recovers without indefinite hit extension
+PASS Recovery protection prevents immediate stun lock
+PASS Physical hand grip captures opponent: left=True, right=True
+PASS Holding opponent consumes stamina
+PASS Throw releases both hands and propels opponent
+PASS Exhausted grip releases without throwing
+PASS Rest restores grip stamina
+PASS Last survivor wins
+PASS Simultaneous elimination has no false winner
+PASS Restart clears KO and grips for all fighters

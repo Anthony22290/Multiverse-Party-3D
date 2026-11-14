@@ -1,0 +1,124 @@
+using System.Collections.Generic;
+using System.Linq;
+using UnityEngine;
+
+// Map sectors (2026-11-10): guarded caches that hold a truck part on some waves, and supply crates.
+public sealed class SurvivalCache : MonoBehaviour
+{
+    public string SectorName;
+    public Vector3 Position => transform.position;
+    public bool Armed { get; private set; }
+    public bool Opened { get; private set; }
+    public readonly List<SurvivalZombie> Guards = new();
+    public float Progress => progress;
+    int netGuards = -1;
+    public int GuardCount => netGuards >= 0 ? netGuards : Guards.Count(g => g != null && !g.Dead);
+    SurvivalDirector director; int partIndex; float progress; Transform lid, beacon, bar; Material beaconMat; GUIStyle arrowStyle;
+    public void Build(string sector)
+    {
+        SectorName = sector;
+        var wood = EscapeKit.Paint(new Color(.45f, .3f, .18f), .1f); var metal = EscapeKit.Paint(new Color(.75f, .6f, .2f), .4f);
+        EscapeKit.Block(transform, "Cofre custodiado", new Vector3(0, .45f, 0), new Vector3(1.8f, .9f, 1.2f), wood, .05f);
+        lid = EscapeKit.Block(transform, "Tapa", new Vector3(0, 1f, 0), new Vector3(1.9f, .22f, 1.3f), metal, .05f, false).transform;
+        beaconMat = MultiverseFX.Glow(new Color(1, .85f, .3f), .25f, 2f, true);
+        var b = GameObject.CreatePrimitive(PrimitiveType.Cylinder); Destroy(b.GetComponent<Collider>()); b.name = "Haz de la pieza"; beacon = b.transform;
+        beacon.SetParent(transform, false); beacon.localPosition = Vector3.up * 12; beacon.localScale = new Vector3(1.2f, 12, 1.2f); b.GetComponent<Renderer>().sharedMaterial = beaconMat; b.SetActive(false);
+        var pb = GameObject.CreatePrimitive(PrimitiveType.Cube); Destroy(pb.GetComponent<Collider>()); bar = pb.transform; bar.SetParent(transform, false); bar.localPosition = new Vector3(0, 2.1f, 0);
+        bar.localScale = new Vector3(0, .15f, .15f); pb.GetComponent<Renderer>().sharedMaterial = MultiverseFX.Glow(new Color(.5f, 1, .4f), .9f, 1);
+    }
+    public void Arm(SurvivalDirector d, int wave, int part)
+    {
+        director = d; partIndex = part; Armed = true; Opened = false; progress = 0; Guards.Clear();
+        lid.localPosition = new Vector3(0, 1f, 0); lid.localRotation = Quaternion.identity; beacon.gameObject.SetActive(true);
+        var kinds = wave <= 2 ? new[] { SurvivalZombie.ZombieKind.Skeleton, SurvivalZombie.ZombieKind.Skeleton, SurvivalZombie.ZombieKind.Blob }
+                  : wave <= 5 ? new[] { SurvivalZombie.ZombieKind.Bomber, SurvivalZombie.ZombieKind.Bomber, SurvivalZombie.ZombieKind.Skeleton, SurvivalZombie.ZombieKind.Skeleton, SurvivalZombie.ZombieKind.Brute }
+                  : new[] { SurvivalZombie.ZombieKind.Brute, SurvivalZombie.ZombieKind.Ghost, SurvivalZombie.ZombieKind.Ghost, SurvivalZombie.ZombieKind.Bomber, SurvivalZombie.ZombieKind.Bomber, SurvivalZombie.ZombieKind.Skeleton };
+        for (int i = 0; i < kinds.Length; i++)
+        {
+            Vector3 p = d.Level.ClampInside(Position + Quaternion.Euler(0, i * 360f / kinds.Length + 20, 0) * Vector3.forward * Random.Range(3f, 5f), 1.5f);
+            Guards.Add(d.Spawn(new SurvivalZombie.Spec { kind = kinds[i], wave = wave, part = -1, guard = true }, -1, p));
+        }
+    }
+    public SurvivalZombie NearestGuard(Vector3 from) => Guards.Where(g => g != null && !g.Dead).OrderBy(g => (g.transform.position - from).sqrMagnitude).FirstOrDefault();
+    void Update()
+    {
+        if (beacon != null && beacon.gameObject.activeSelf) beacon.Rotate(0, 40 * Time.deltaTime, 0);
+        if (!Armed || Opened || director == null || director.IsClient) return;
+        if (!director.Fighting) { Disarm(); return; }
+        bool guarded = Guards.Any(g => g != null && !g.Dead);
+        var near = director.Team.FirstOrDefault(p => p != null && !p.Downed && Vector3.Distance(p.transform.position, Position) < 2.8f);
+        if (!guarded && near != null) progress += Time.deltaTime / 1.2f; else progress = Mathf.Max(0, progress - Time.deltaTime);
+        bar.localScale = new Vector3(2f * progress, .15f, .15f);
+        if (progress >= 1)
+        {
+            Opened = true; Armed = false; beacon.gameObject.SetActive(false); bar.localScale = new Vector3(0, .15f, .15f);
+            lid.localPosition = new Vector3(0, 1.1f, -.7f); lid.localRotation = Quaternion.Euler(-70, 0, 0);
+            MultiverseFX.Rainbow(Position + Vector3.up * 1.2f, 30, 7); EscapeAudio.PlayUI("unlock");
+            director.DropPart(partIndex, Position + Vector3.forward * 1.6f);
+        }
+    }
+    public void Disarm() { Armed = false; if (beacon != null) beacon.gameObject.SetActive(false); }
+    /// <summary>Online client: the host's state of this cache.</summary>
+    public void ApplyNet(SurvivalDirector d, bool armed, bool opened, float netProgress, int guards)
+    {
+        director = d; netGuards = guards;
+        if (armed && !Armed && !opened) { Opened = false; lid.localPosition = new Vector3(0, 1f, 0); lid.localRotation = Quaternion.identity; }
+        if (opened && !Opened)
+        {
+            lid.localPosition = new Vector3(0, 1.1f, -.7f); lid.localRotation = Quaternion.Euler(-70, 0, 0);
+            MultiverseFX.Rainbow(Position + Vector3.up * 1.2f, 30, 7); EscapeAudio.PlayUI("unlock");
+        }
+        Armed = armed; Opened = opened; progress = netProgress;
+        beacon.gameObject.SetActive(armed && !opened);
+        bar.localScale = new Vector3(armed && !opened ? 2f * progress : 0f, .15f, .15f);
+    }
+    void OnGUI()
+    {   // edge-of-screen pointer to the guarded part
+        if (!Armed || Opened || director == null || director.Human == null || director.View == null) return;
+        var cam = director.View.GetComponent<Camera>(); if (cam == null) return;
+        Vector3 sp = cam.WorldToScreenPoint(Position + Vector3.up * 2); bool behind = sp.z < 0; if (behind) sp = -sp;
+        float m = 60; bool off = behind || sp.x < m || sp.x > Screen.width - m || sp.y < m || sp.y > Screen.height - m;
+        Vector2 c = new Vector2(Screen.width * .5f, Screen.height * .5f), d = new Vector2(sp.x, sp.y) - c;
+        if (off) { float k = Mathf.Min((Screen.width * .5f - m) / Mathf.Max(1, Mathf.Abs(d.x)), (Screen.height * .5f - m) / Mathf.Max(1, Mathf.Abs(d.y))); d *= k; }
+        Vector2 at = c + d; float dist = Vector3.Distance(director.Human.transform.position, Position);
+        if (arrowStyle == null) { arrowStyle = new GUIStyle(GUI.skin.label) { fontSize = 18, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter }; arrowStyle.normal.textColor = new Color(1, .85f, .3f); }
+        string guards = GuardCount is int n && n > 0 ? n + " guardianes" : "¡ábrelo!";
+        GUI.Label(new Rect(at.x - 120, Screen.height - at.y - 22, 240, 44), (off ? "◆ " : "") + "PIEZA · " + SectorName + "\n" + dist.ToString("F0") + " m · " + guards, arrowStyle);
+    }
+    void OnDestroy() { if (beaconMat != null) Destroy(beaconMat); }
+}
+
+public sealed class SurvivalLootCrate : MonoBehaviour
+{
+    SurvivalDirector director; bool open; float progress; Transform lid; Light glow;
+    public bool IsOpen => open;
+    public void Build(SurvivalDirector d)
+    {
+        director = d;
+        var wood = EscapeKit.Paint(new Color(.55f, .38f, .2f), .1f);
+        EscapeKit.Block(transform, "Caja de suministros", new Vector3(0, .35f, 0), new Vector3(.9f, .7f, .9f), wood, .04f);
+        lid = EscapeKit.Block(transform, "Tapa", new Vector3(0, .74f, 0), new Vector3(.95f, .1f, .95f), EscapeKit.Paint(new Color(.35f, .55f, .25f), .1f), .02f, false).transform;
+        EscapeKit.Block(transform, "Cruz", new Vector3(0, .8f, 0), new Vector3(.5f, .02f, .12f), EscapeKit.Paint(Color.white), .01f, false).transform.SetParent(lid, true);
+        glow = EscapeKit.PointLight(transform, Vector3.up * 1.2f, new Color(.6f, 1, .5f), 4, 1.2f);
+    }
+    public void Close() { open = false; progress = 0; lid.localPosition = new Vector3(0, .74f, 0); lid.localRotation = Quaternion.identity; glow.enabled = true; }
+    /// <summary>Online client: open or closed as on the host.</summary>
+    public void ApplyNet(bool isOpen)
+    {
+        if (isOpen == open) return;
+        if (!isOpen) { Close(); return; }
+        open = true; glow.enabled = false; lid.localPosition = new Vector3(0, .9f, -.5f); lid.localRotation = Quaternion.Euler(-80, 0, 0);
+        MultiverseFX.Burst(transform.position + Vector3.up, new Color(.6f, 1, .5f), 16, 5); EscapeAudio.Play("chest", transform.position, .7f);
+    }
+    void Update()
+    {
+        if (open || director == null || !director.Fighting || director.IsClient) return;
+        var near = director.Team.FirstOrDefault(p => p != null && !p.Downed && Vector3.Distance(p.transform.position, transform.position) < 1.8f);
+        progress = near != null ? progress + Time.deltaTime / .8f : 0;
+        if (progress < 1) return;
+        open = true; glow.enabled = false; lid.localPosition = new Vector3(0, .9f, -.5f); lid.localRotation = Quaternion.Euler(-80, 0, 0);
+        float r = Random.value; var kind = r < .5f ? SurvivalPowerUp.Kind.Medkit : r < .75f ? SurvivalPowerUp.Kind.Rage : SurvivalPowerUp.Kind.Bomb;
+        SurvivalPowerUp.Drop(director, kind, transform.position + transform.forward * 1.3f);
+        MultiverseFX.Burst(transform.position + Vector3.up, new Color(.6f, 1, .5f), 16, 5); EscapeAudio.Play("chest", transform.position, .7f);
+    }
+}

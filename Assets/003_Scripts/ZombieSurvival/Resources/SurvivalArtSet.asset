@@ -1,0 +1,85 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5a1e25400a203b446b2e9ff27c99df34, type: 3}
+  m_Name: SurvivalArtSet
+  m_EditorClassIdentifier: Assembly-CSharp::SurvivalArtSet
+  props:
+  - key: Barrel
+    prefab: {fileID: 919132149155446097, guid: 731fb9bdede58a04fbea31b2c2b8ca7f, type: 3}
+  - key: Chest
+    prefab: {fileID: 919132149155446097, guid: 9347651b0ae96f24cb7af3f3012ce8e3, type: 3}
+  - key: CinderBlock
+    prefab: {fileID: 919132149155446097, guid: 363b7c6b3d2779e49a6d56434babf158, type: 3}
+  - key: Container_Green
+    prefab: {fileID: 919132149155446097, guid: 837b354e8ddea884dad2af7239ef0a9d, type: 3}
+  - key: Container_Red
+    prefab: {fileID: 919132149155446097, guid: 2b94c389fe67e4a499b28b90c67456d4, type: 3}
+  - key: Couch
+    prefab: {fileID: 919132149155446097, guid: f9df5b8c49775c44f8dc50350c64f00a, type: 3}
+  - key: FireHydrant
+    prefab: {fileID: 919132149155446097, guid: 46d7106bd44de534d9d3369f23242577, type: 3}
+  - key: Pallet
+    prefab: {fileID: 919132149155446097, guid: f1dd9dbec4f363b45a5472b610e017f5, type: 3}
+  - key: Pallet_Broken
+    prefab: {fileID: 919132149155446097, guid: 3ad5b82a095e70d4ca27532cfa63aeed, type: 3}
+  - key: Pipes
+    prefab: {fileID: 919132149155446097, guid: fe3ddfee3c03ad84394e126ddea0dd2d, type: 3}
+  - key: PlasticBarrier
+    prefab: {fileID: 919132149155446097, guid: 53776d38e5771734fb9db7ea79e9ecd0, type: 3}
+  - key: StreetLights
+    prefab: {fileID: 919132149155446097, guid: d5feb921e3dd4934291e90befd94ed39, type: 3}
+  - key: TownSign
+    prefab: {fileID: 919132149155446097, guid: 593a4d920e7af7b43896c2a47a681eb3, type: 3}
+  - key: TrafficBarrier_1
+    prefab: {fileID: 919132149155446097, guid: e808ae25b96cde24da64fa5d72a8c739, type: 3}
+  - key: TrafficBarrier_2
+    prefab: {fileID: 919132149155446097, guid: fbec4b06764829945b5f4a791f3a9adc, type: 3}
+  - key: TrafficCone_1
+    prefab: {fileID: 919132149155446097, guid: 10c2923558a56bf4589ebb2697b1eba5, type: 3}
+  - key: TrafficCone_2
+    prefab: {fileID: 919132149155446097, guid: f316257263adf7f40a30ef1907bba2b1, type: 3}
+  - key: TrashBag_1
+    prefab: {fileID: 919132149155446097, guid: e4de0df682aadd947b2eb1f4cdb61829, type: 3}
+  - key: TrashBag_2
+    prefab: {fileID: 919132149155446097, guid: 600c31a552b3efe4c8a6df23d335be52, type: 3}
+  - key: WaterTower
+    prefab: {fileID: 919132149155446097, guid: 264ad548567d3974fafce122f1bcd72d, type: 3}
+  - key: Wheel
+    prefab: {fileID: 919132149155446097, guid: 24ac9f788abbefd4184168fb2407be23, type: 3}
+  - key: Wheels_Stack
+    prefab: {fileID: 919132149155446097, guid: 7a5c40ddc59c8314a971adf3f236c947, type: 3}
+  - key: Vehicle_Pickup
+    prefab: {fileID: 919132149155446097, guid: 395fea58a1cff3c40834636f70b3f58f, type: 3}
+  - key: Vehicle_Pickup_Armored
+    prefab: {fileID: 919132149155446097, guid: c00f9daa3848a9e49a1bdc10f4a7a073, type: 3}
+  - key: Vehicle_Sports
+    prefab: {fileID: 919132149155446097, guid: 860c2ff80477ff1449c7334208e5cf8a, type: 3}
+  - key: Vehicle_Sports_Armored
+    prefab: {fileID: 919132149155446097, guid: 3e668f83818a30e4fb6c3e8803023b99, type: 3}
+  - key: Vehicle_Truck
+    prefab: {fileID: 919132149155446097, guid: af9147374ed46b948a852ed744bab560, type: 3}
+  - key: Vehicle_Truck_Armored
+    prefab: {fileID: 919132149155446097, guid: 60faba0f9f8a6b44b863861edd674188, type: 3}
+  - key: WoodenBat_Barbed
+    prefab: {fileID: 919132149155446097, guid: ebc1b279fbabaf0488f1049ae2066101, type: 3}
+  - key: WoodenBat_Saw
+    prefab: {fileID: 919132149155446097, guid: 4489b4d47a385a14c935551cf73aeff8, type: 3}
+  - key: Guitar
+    prefab: {fileID: 919132149155446097, guid: 0a96f13fb6d61ed4fa9eddd0e6f320de, type: 3}
+  - key: Axe
+    prefab: {fileID: 919132149155446097, guid: a0965c7bf2053d94a95cd3de9c87755b, type: 3}
+  zombies:
+  - {fileID: 3069864433252124736, guid: ea7b4ed6c297a23448185119b0171aa8, type: 3}
+  - {fileID: 3031559397693297245, guid: 2fd3013d7f9b98847aa5c1d68f2f31eb, type: 3}
+  - {fileID: 5932022924099269984, guid: e787571a71a1ee5469f1866a9fc05be9, type: 3}
+  - {fileID: 879181498101994233, guid: 543d0740462fb04418ce5c2e4df6d59b, type: 3}
+  atlas: {fileID: 2100000, guid: ae836b73a84a9304bae1369a2406f482, type: 2}

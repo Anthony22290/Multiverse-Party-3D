@@ -1,0 +1,304 @@
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+using Fusion;
+using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.UI;
+using UnityEngine.SceneManagement;
+
+/// <summary>Room lifecycle and local controls. Gameplay authority lives in PirateNetworkWorld.</summary>
+public sealed class PirateSession : MonoBehaviour
+{
+    public static PirateSession Instance { get; private set; }
+    public PirateArenaDirector Arena { get; private set; }
+    public NetworkRunner Runner { get; private set; }
+    public PirateNetworkWorld World { get; private set; }
+    public bool MenuOpen { get; private set; } = true;
+    public bool LocalReady { get; private set; }
+    public string Status { get; private set; } = "Juega solo o invita hasta cinco amigos con el código de sala.";
+    public string RoomCode { get; private set; } = "";
+    public bool Busy { get; private set; }
+    [NonSerialized] public PirateNetworkInput LatestInput;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+    public bool TestInputEnabled;
+#endif
+    private SimulationMode previousPhysics;
+    private bool physicsOwned, leaving;
+    private int seenRound;
+    private GameObject panel;
+    private GameObject mainOptions, roomOptions, helpOptions;
+    private UnityEngine.UI.Text statusLabel, roomLabel;
+    private UnityEngine.UI.InputField codeField;
+    private UnityEngine.UI.Button hostButton, joinButton, startButton, localButton, resumeButton;
+    private Font font;
+
+    public void Initialize(PirateArenaDirector arena)
+    {
+        Instance = this; Arena = arena; Application.runInBackground = true; Application.targetFrameRate = 60;
+        CreateMenu(); SetMenu(!MultiverseParty.InMatch);
+        string[] args = Environment.GetCommandLineArgs();
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        for (int i = 0; i < args.Length - 1; i++)
+            if (args[i] == "-pirate-test") gameObject.AddComponent<PirateNetworkTestProbe>().Configure(args[i + 1]);
+#endif
+        for (int i = 0; i < args.Length - 1; i++)
+        {
+            if (args[i] == "-pirate-host") _ = Connect(true, args[i + 1]);
+            if (args[i] == "-pirate-join") _ = Connect(false, args[i + 1]);
+        }
+    }
+
+    private void Update()
+    {
+        Keyboard keys = Keyboard.current; Mouse mouse = Mouse.current;
+        if (keys != null && keys.escapeKey.wasPressedThisFrame && !MultiverseParty.InMatch) SetMenu(!MenuOpen);
+        bool readHardware = true;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        readHardware = !TestInputEnabled;
+#endif
+        if (readHardware && (MenuOpen || !Application.isFocused))
+        {
+            if (LatestInput.Grab || LatestInput.RightGrab) LatestInput.Drop++;
+            LatestInput.Move = Vector2.zero; LatestInput.Grab = false; LatestInput.RightGrab = false; LatestInput.Lift = false;
+        }
+        else if (readHardware && keys != null)
+        {
+            LatestInput.Move = new Vector2((keys.dKey.isPressed ? 1 : 0) - (keys.aKey.isPressed ? 1 : 0),
+                (keys.wKey.isPressed ? 1 : 0) - (keys.sKey.isPressed ? 1 : 0));
+            LatestInput.Yaw = Arena.ArenaCamera.GetComponent<PirateArenaCamera>().Yaw;
+            LatestInput.LookPitch = Arena.ArenaCamera.GetComponent<PirateArenaCamera>().Pitch;
+            LatestInput.Grab = mouse != null && mouse.leftButton.isPressed;
+            LatestInput.RightGrab = mouse != null && mouse.rightButton.isPressed;
+            LatestInput.Lift = keys.leftShiftKey.isPressed || keys.rightShiftKey.isPressed;
+            if (keys.spaceKey.wasPressedThisFrame) LatestInput.Jump++;
+            if (keys.eKey.wasPressedThisFrame) LatestInput.Push++;
+            if (keys.fKey.wasPressedThisFrame) LatestInput.Throw++;
+            if (keys.rKey.wasPressedThisFrame && World != null && World.HasStateAuthority && World.Round.Finished) World.StartRound();
+        }
+        if (panel == null) return;
+        if (World != null && World.Started && World.RoundNumber != seenRound)
+        {
+            seenRound = World.RoundNumber; SetMenu(false);
+            Status = "Partida en curso. Si quedas eliminado, observarás a los supervivientes hasta la próxima ronda.";
+        }
+        bool online = Runner != null && Runner.IsRunning;
+        statusLabel.text = Status;
+        roomLabel.text = online ? "SALA " + RoomCode + "   ·   " + Runner.ActivePlayers.Count() + " / 6 jugadores   ·   Sudamérica" : "ARENA DEL CAOS";
+        hostButton.interactable = joinButton.interactable = !Busy && !online;
+        codeField.interactable = !Busy && !online;
+        startButton.gameObject.SetActive(online && World != null && World.HasStateAuthority);
+        startButton.interactable = !Busy;
+        localButton.interactable = !Busy;
+        localButton.GetComponentInChildren<UnityEngine.UI.Text>().text = online ? "JUGAR LOCAL · SALIR DE SALA" : "JUGAR LOCAL";
+        resumeButton.interactable = !Busy && LocalReady;
+    }
+
+    public void SetMenu(bool open)
+    {
+        MenuOpen = open;
+        if (!open) LocalReady = true;
+        if (open) LatestInput.Drop++;
+        if (panel != null) panel.SetActive(open);
+        Cursor.lockState = open ? CursorLockMode.None : CursorLockMode.Locked; Cursor.visible = open;
+    }
+
+    public async Task Connect(bool host, string requestedCode = null)
+    {
+        if (Busy || Runner != null) return;
+        string code = (requestedCode ?? codeField.text).Trim().ToUpperInvariant();
+        if (host && code.Length == 0) code = Guid.NewGuid().ToString("N").Substring(0, 6).ToUpperInvariant();
+        if (code.Length < 4 || code.Length > 12 || code.Any(c => !(c >= 'A' && c <= 'Z') && !(c >= '0' && c <= '9')))
+        { Status = "Usa un código de 4 a 12 letras o números."; return; }
+        Busy = true; SetMenu(true); Status = host ? "Creando sala…" : "Conectando con la sala…"; RoomCode = code;
+        FreezeForConnection();
+        var go = new GameObject("Photon Fusion Runner");
+        Runner = go.AddComponent<NetworkRunner>(); Runner.ProvideInput = true;
+        var callbacks = new NetworkDelegates();
+        callbacks.OnInput = (runner, input) => input.Set(LatestInput);
+        callbacks.OnShutdown = (runner, reason) => HandleShutdown(runner, reason);
+        Runner.AddCallbacks(callbacks);
+        try
+        {
+            var settings = Fusion.Photon.Realtime.PhotonAppSettings.Global.AppSettings.GetCopy();
+            settings.FixedRegion = "sa"; settings.AppVersion = "pirate-arena-1";
+            var result = await Runner.StartGame(new StartGameArgs {
+                GameMode = host ? GameMode.Host : GameMode.Client, SessionName = code, PlayerCount = 6,
+                IsVisible = false, IsOpen = true, EnableClientSessionCreation = false,
+                CustomPhotonAppSettings = settings
+            });
+            if (!result.Ok) { Status = "No se pudo entrar: " + result.ShutdownReason + ". Revisa el código y que el anfitrión siga conectado."; await Leave(false); return; }
+            if (host)
+            {
+                var prefab = Resources.Load<NetworkObject>("PirateNetworkWorld");
+                if (prefab == null) throw new InvalidOperationException("Falta el prefab de red. Ejecuta Multiverse/Prepare Pirate Multiplayer en Unity.");
+                Runner.Spawn(prefab);
+            }
+            Status = host ? "Comparte el código. Pulsa Iniciar ronda cuando estén todos; los espacios libres usan bots." : "Conectado. Espera a que el anfitrión inicie la ronda.";
+        }
+        catch (Exception exception)
+        {
+            Status = "Conexión fallida: " + exception.Message;
+            Debug.LogError("PirateSession: " + exception.Message);
+            await Leave(false);
+        }
+        finally { Busy = false; }
+    }
+
+    private void FreezeForConnection()
+    {
+        Arena.RestartRound(); Arena.NetworkDriven = true;
+        foreach (var fighter in Arena.Fighters) fighter.SetNetworkMode(true, true);
+        foreach (var prop in Arena.Props) { prop.NetworkDriven = true; prop.IsProxy = true; prop.GetComponent<Rigidbody>().collisionDetectionMode = CollisionDetectionMode.Discrete; prop.GetComponent<Rigidbody>().isKinematic = true; }
+        foreach (var cannon in Arena.Cannons) cannon.NetworkDriven = true;
+        foreach (var shark in Arena.Sharks) shark.NetworkDriven = true;
+    }
+
+    public void AttachWorld(PirateNetworkWorld world)
+    {
+        World = world;
+        bool proxy = !world.HasStateAuthority;
+        foreach (var fighter in Arena.Fighters) fighter.SetNetworkMode(true, proxy);
+        foreach (var prop in Arena.Props) { prop.IsProxy = proxy; var body = prop.GetComponent<Rigidbody>(); body.isKinematic = proxy; body.interpolation = RigidbodyInterpolation.None; body.collisionDetectionMode = proxy ? CollisionDetectionMode.Discrete : CollisionDetectionMode.ContinuousDynamic; }
+        if (!proxy) { previousPhysics = Physics.simulationMode; Physics.simulationMode = SimulationMode.Script; physicsOwned = true; }
+    }
+
+    public void BeginOnlineRound()
+    {
+        if (World == null || !World.HasStateAuthority) return;
+        World.StartRound(); Status = "Partida en curso. Esc abre la sala; el juego continúa mientras el menú está abierto."; SetMenu(false);
+    }
+
+    public async Task Leave(bool playLocal = true)
+    {
+        if (leaving) return;
+        leaving = true;
+        var runner = Runner;
+        if (runner != null) await runner.Shutdown();
+        Runner = null; World = null;
+        RestoreLocal(); leaving = false; Busy = false;
+        if (playLocal) { Status = "Modo local. Puedes crear otra sala desde este menú."; SetMenu(false); }
+    }
+
+    private void HandleShutdown(NetworkRunner runner, ShutdownReason reason)
+    {
+        if (leaving || runner != Runner) return;
+        Runner = null; World = null; Busy = false; RestoreLocal(); SetMenu(true);
+        Status = "Sala cerrada: " + reason + ". Crea otra sala para continuar. No hay migración de anfitrión.";
+    }
+
+    private void RestoreLocal()
+    {
+        if (physicsOwned) { Physics.simulationMode = previousPhysics; physicsOwned = false; }
+        if (Arena == null) return;
+        Arena.NetworkDriven = false;
+        for (int i = 0; i < Arena.Fighters.Count; i++) { Arena.Fighters[i].SetNetworkMode(false, false); Arena.Fighters[i].SetControl(i == 0, i == 0 ? "Tú" : "Pirata " + i); }
+        foreach (var prop in Arena.Props) { prop.NetworkDriven = prop.IsProxy = false; var body = prop.GetComponent<Rigidbody>(); body.isKinematic = false; body.interpolation = RigidbodyInterpolation.Interpolate; body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic; }
+        foreach (var cannon in Arena.Cannons) cannon.NetworkDriven = false;
+        foreach (var shark in Arena.Sharks) shark.NetworkDriven = false;
+        Arena.RestartRound(); LatestInput = default; seenRound = 0;
+    }
+
+    private void OnDestroy()
+    {
+        if (physicsOwned) Physics.simulationMode = previousPhysics;
+        if (Instance == this) Instance = null;
+        Cursor.lockState = CursorLockMode.None; Cursor.visible = true;
+    }
+
+    private void CreateMenu()
+    {
+        font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        var canvas = new GameObject("Pirate Lobby", typeof(Canvas), typeof(UnityEngine.UI.CanvasScaler), typeof(UnityEngine.UI.GraphicRaycaster));
+        canvas.transform.SetParent(transform, false);
+        canvas.GetComponent<Canvas>().renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.GetComponent<Canvas>().sortingOrder = 100;
+        var scaler = canvas.GetComponent<UnityEngine.UI.CanvasScaler>(); scaler.uiScaleMode = UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1280, 720); scaler.matchWidthOrHeight = 0.5f;
+        if (FindAnyObjectByType<EventSystem>() == null) new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule));
+        panel = Rect("Arena menu", canvas.transform, Vector2.zero, new Vector2(1280, 720)).gameObject;
+        var backdrop = panel.AddComponent<UnityEngine.UI.Image>();
+        backdrop.color = new Color(.065f, .025f, .12f, .82f);
+        var full = panel.GetComponent<RectTransform>();
+        full.anchorMin = Vector2.zero; full.anchorMax = Vector2.one; full.sizeDelta = Vector2.zero;
+        var title = Label("ARENA DEL CAOS", panel.transform, new Vector2(0, 250), new Vector2(1000, 100), 68, new Color(1f, .24f, .60f));
+        title.fontStyle = FontStyle.Bold;
+        title.transform.localRotation = Quaternion.Euler(0f, 0f, -3f);
+        var outline = title.gameObject.AddComponent<UnityEngine.UI.Outline>();
+        outline.effectColor = new Color(.12f, .02f, .2f); outline.effectDistance = new Vector2(4f, -4f);
+        Label("MULTIVERSE PARTY 3D  /  ÚLTIMO EN PIE", panel.transform, new Vector2(0, 187), new Vector2(850, 35), 20, Color.white);
+        mainOptions = Rect("Principal", panel.transform, Vector2.zero, new Vector2(800, 400)).gameObject;
+        roomOptions = Rect("Sala", panel.transform, Vector2.zero, new Vector2(800, 400)).gameObject;
+        helpOptions = Rect("Controles", panel.transform, Vector2.zero, new Vector2(800, 400)).gameObject;
+        localButton = Button("JUGAR LOCAL", new Vector2(0, 105), new Vector2(670, 60), () => { _ = Leave(); }, mainOptions.transform);
+        resumeButton = Button("CONTINUAR", new Vector2(0, 37), new Vector2(670, 60), () => SetMenu(false), mainOptions.transform);
+        Button("EN LÍNEA", new Vector2(0, -31), new Vector2(670, 60), () => ShowMenuPage(1), mainOptions.transform);
+        Button("CONTROLES", new Vector2(0, -99), new Vector2(670, 60), () => ShowMenuPage(2), mainOptions.transform);
+        Button("VOLVER AL MUNDO", new Vector2(0, -167), new Vector2(670, 60), () => { _ = ReturnToHub(); }, mainOptions.transform);
+        roomLabel = Label("SALA", roomOptions.transform, new Vector2(0, 127), new Vector2(760, 35), 24, Color.white);
+        statusLabel = Label(Status, roomOptions.transform, new Vector2(0, 78), new Vector2(730, 65), 19, Color.white);
+        var input = Rect("Room code", roomOptions.transform, new Vector2(0, 12), new Vector2(640, 48));
+        input.gameObject.AddComponent<UnityEngine.UI.Image>().color = new Color(.18f, .1f, .27f);
+        codeField = input.gameObject.AddComponent<UnityEngine.UI.InputField>(); codeField.characterLimit = 12;
+        codeField.textComponent = Label("", input, Vector2.zero, new Vector2(610, 44), 24, Color.white);
+        codeField.placeholder = Label("CÓDIGO DE SALA", input, Vector2.zero, new Vector2(610, 44), 22, new Color(.8f,.75f,.9f));
+        hostButton = Button("CREAR SALA", new Vector2(-170, -51), new Vector2(320, 52), () => { _ = Connect(true); }, roomOptions.transform);
+        joinButton = Button("UNIRSE", new Vector2(170, -51), new Vector2(320, 52), () => { _ = Connect(false); }, roomOptions.transform);
+        startButton = Button("INICIAR RONDA", new Vector2(0, -112), new Vector2(640, 52), BeginOnlineRound, roomOptions.transform);
+        Button("VOLVER", new Vector2(0, -180), new Vector2(640, 52), () => ShowMenuPage(0), roomOptions.transform);
+        Label("CÓMO SE JUEGA", helpOptions.transform, new Vector2(0, 120), new Vector2(760, 45), 32, new Color(1f,.84f,.25f));
+        Label("WASD  ·  MOVER     /     RATÓN  ·  MIRAR\nESPACIO  ·  SALTAR / ESCAPAR\nCLIC IZQ. / DER.  ·  AGARRAR CON CADA MANO\nE  ·  GOLPEAR     SHIFT  ·  LEVANTAR     F  ·  LANZAR\nSUELTA EL RATÓN PARA SOLTAR SIN LANZAR\nRUEDA  ·  ZOOM     ESC  ·  MENÚ     R  ·  OTRA RONDA", helpOptions.transform, new Vector2(0, -15), new Vector2(790, 220), 23, Color.white);
+        Button("VOLVER", new Vector2(0, -180), new Vector2(640, 52), () => ShowMenuPage(0), helpOptions.transform);
+        Label("AGARRA. LEVANTA. LANZA.\nGANA EL ÚLTIMO SOBRE EL BARCO.", panel.transform, new Vector2(0, -285), new Vector2(950, 65), 21, new Color(.85f,.83f,.95f));
+        MultiverseUI.Skin(canvas, MultiverseUI.Mode.Arena);
+        ShowMenuPage(0);
+    }
+
+    private void ShowMenuPage(int page)
+    {
+        mainOptions.SetActive(page == 0);
+        roomOptions.SetActive(page == 1);
+        helpOptions.SetActive(page == 2);
+        if (EventSystem.current != null) EventSystem.current.SetSelectedGameObject(null);
+    }
+
+    private async Task ReturnToHub()
+    {
+        await Leave(false);
+        SceneManager.LoadScene("MundoDeInicio");
+    }
+
+    private RectTransform Rect(string name, Transform parent, Vector2 position, Vector2 size)
+    {
+        var rect = new GameObject(name, typeof(RectTransform)).GetComponent<RectTransform>();
+        rect.SetParent(parent, false); rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = position; rect.sizeDelta = size; return rect;
+    }
+
+    private UnityEngine.UI.Text Label(string value, Transform parent, Vector2 position, Vector2 size, int fontSize, Color color)
+    {
+        var label = Rect("Label", parent, position, size).gameObject.AddComponent<UnityEngine.UI.Text>();
+        label.font = font; label.text = value; label.fontSize = fontSize; label.color = color;
+        label.alignment = TextAnchor.MiddleCenter; label.raycastTarget = false; return label;
+    }
+
+    private UnityEngine.UI.Button Button(string text, Vector2 position, Vector2 size, UnityEngine.Events.UnityAction action, Transform parent = null)
+    {
+        var rect = Rect(text, parent != null ? parent : panel.transform, position, size);
+        rect.gameObject.AddComponent<UnityEngine.UI.Image>().color = Color.white;
+        var button = rect.gameObject.AddComponent<UnityEngine.UI.Button>(); button.onClick.AddListener(action);
+        var colors = button.colors;
+        colors.normalColor = new Color(.14f, .06f, .22f, .35f);
+        colors.highlightedColor = new Color(.65f, .2f, .58f, .8f);
+        colors.selectedColor = colors.highlightedColor;
+        colors.pressedColor = new Color(.85f, .25f, .55f, .95f);
+        colors.disabledColor = new Color(.12f,.08f,.18f,.12f);
+        button.colors = colors;
+        var label = Label(text, rect, Vector2.zero, size - new Vector2(18, 4), 30, new Color(1f, .86f, .22f));
+        label.fontStyle = FontStyle.Bold;
+        var shadow = label.gameObject.AddComponent<UnityEngine.UI.Shadow>();
+        shadow.effectColor = new Color(.08f,.02f,.12f,.95f); shadow.effectDistance = new Vector2(2,-3);
+        return button;
+    }
+}

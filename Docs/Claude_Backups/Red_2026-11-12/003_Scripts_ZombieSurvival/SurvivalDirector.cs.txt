@@ -1,0 +1,566 @@
+using System.Collections.Generic;
+using System.Linq;
+using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
+using UnityEngine.SceneManagement;
+
+/// <summary>
+/// "Invasión Zombi": cooperative wave survival for 2–4 players (local player + bot teammates).
+/// Ten waves. In every wave one marked zombie (or a boss on waves 3, 6, 9 and 10) drops a part of the broken pickup.
+/// Carry each part to the truck and install it; with all ten installed, everybody gets in and the truck escapes.
+/// Flow: lobby → countdown → wave → break → … → escape (hold the zone) → results. Lose if the whole team is down at once.
+/// </summary>
+public sealed class SurvivalDirector : MonoBehaviour
+{
+    public enum Phase { Lobby, Countdown, Wave, Break, Escape, Won, Lost }
+
+    public const int TotalWaves = 10;
+    public static readonly string[] PartNames =
+    {
+        "Rueda delantera", "Rueda trasera", "Batería", "Bujías", "Radiador",
+        "Correa del motor", "Faros", "Volante", "Bidón de gasolina", "Llave de contacto"
+    };
+    public static string[] Names = { "Tú", "Coral", "Menta", "Rayo", "Lila", "Ámbar" };
+    static string[] Models = { "Anne", "Henry", "Mako", "Captain_Barbarossa", "Skeleton", "Henry" };
+    static readonly string[] Weapons = { "WoodenBat_Barbed", "Axe", "Guitar", "WoodenBat_Saw", "Axe", "Guitar" };
+    public static Color[] Colors =
+    {
+        new Color(.3f, .85f, 1f), new Color(1f, .38f, .48f), new Color(.38f, 1f, .62f), new Color(1f, .86f, .28f),
+        new Color(.78f, .55f, 1f), new Color(1f, .62f, .25f)
+    };
+    public const int MaxPlayers = 6;
+
+    [Tooltip("Tests: a bot also drives the local player.")] public bool AutoHuman;
+    [Tooltip("Multiplies the damage zombies deal to the team.")] public float damageToTeam = 1f;
+    public float breakSeconds = 9f, escapeHoldSeconds = 6f;
+
+    public Phase State { get; private set; } = Phase.Lobby;
+    public bool Fighting => State == Phase.Wave || State == Phase.Break || State == Phase.Escape;
+    public bool InputFree => Fighting && (HUD == null || HUD.InputFree);
+    public float Countdown { get; private set; }
+    public float Elapsed { get; private set; }
+    public int Wave { get; private set; }
+    public int PlayerCount { get; private set; } = 4;
+    public readonly List<SurvivalPlayer> Team = new();
+    public SurvivalPlayer Human { get; private set; }
+    public SurvivalLevel Level { get; private set; }
+    public SurvivalCamera View { get; private set; }
+    public SurvivalHUD HUD { get; private set; }
+    public int PartsInstalled { get; private set; }
+    public SurvivalPart LoosePart { get; private set; }
+    public SurvivalZombie Carrier { get; private set; }
+    public SurvivalZombie Boss { get; private set; }
+    public float BreakLeft { get; private set; }
+    public float EscapeProgress { get; private set; }
+    public float[] WaveClearedAt { get; } = new float[TotalWaves];
+    public string Notice { get; private set; } = "";
+    public float NoticeAt { get; private set; }
+    public int ZombiesLeft => SurvivalZombie.All.Count + Mathf.Max(0, queue.Count) + revives.Count;
+    // ---- roguelike layer (2026-11-10)
+    public float SpeedMod { get; private set; } = 1f;
+    public string Modifier { get; private set; } = "";
+    public SurvivalCache ActiveCache { get; private set; }
+    public SurvivalPerkUI PerkUI { get; private set; }
+    enum Mod { None, Veloz, Bombas, Noche, Esqueletos, Monstruos, Brutos }
+    Mod mod; float bombRainAt; bool nightOn; float sunBase = -1, ambientBase;
+    readonly List<(float at, Vector3 pos)> revives = new();
+    public void QueueRevive(Vector3 at) { revives.Add((Time.time + 2.5f, at)); }
+    public void SplitBlob(SurvivalZombie blob)
+    {
+        for (int i = 0; i < 2; i++)
+        {
+            Vector3 p = Level.ClampInside(blob.transform.position + Quaternion.Euler(0, i * 180f + 90f, 0) * blob.transform.forward * 1.1f, 1f);
+            var m = Spawn(new SurvivalZombie.Spec { kind = SurvivalZombie.ZombieKind.MiniBlob, wave = Wave, part = -1 }, -1, p); m.Stagger(.5f);
+        }
+        SurvivalKit.Puff(blob.transform.position + Vector3.up * .6f, new Color(.4f, .95f, .35f), 10, .8f);
+    }
+    public int TotalKills => Team.Sum(p => p.Kills);
+    public bool PartReady => PartsInstalled >= Wave;
+    public float DriveTime { get; private set; }
+
+    readonly List<SurvivalZombie.Spec> queue = new();
+    float spawnTimer, noticeUntil, escapeSpawnTimer, resultsAt = -1f;
+    int lastGate = -1;
+
+    // ------------------------------------------------------------------ setup
+
+    void Start()
+    {
+        Application.targetFrameRate = 60;
+        Application.runInBackground = true;
+        SurvivalZombie.All.Clear();
+        PlayerCount = Mathf.Clamp(PlayerPrefs.GetInt("SurvivalPlayers", 4), 2, MaxPlayers);
+        EscapeAudio.Ensure();
+        PerkUI = gameObject.AddComponent<SurvivalPerkUI>();
+        SetupEnvironment();
+
+        Level = gameObject.AddComponent<SurvivalLevel>();
+        Level.Build(this);
+
+        var cam = Camera.main;
+        if (cam == null)
+        {
+            var c = new GameObject("Main Camera", typeof(Camera), typeof(AudioListener)) { tag = "MainCamera" };
+            cam = c.GetComponent<Camera>();
+        }
+        cam.clearFlags = CameraClearFlags.SolidColor;
+        cam.backgroundColor = RenderSettings.fogColor;
+        var data = cam.GetComponent<UniversalAdditionalCameraData>();
+        if (data == null) data = cam.gameObject.AddComponent<UniversalAdditionalCameraData>();
+        data.renderPostProcessing = true;
+        View = cam.gameObject.AddComponent<SurvivalCamera>();
+        View.Director = this;
+
+        HUD = gameObject.AddComponent<SurvivalHUD>();
+        HUD.Director = this;
+        PerkUI.Init(this);
+        EscapeAudio.Music("zmusic");
+    }
+
+    void SetupEnvironment()
+    {
+        RenderSettings.ambientMode = AmbientMode.Trilight;
+        RenderSettings.ambientSkyColor = new Color(.5f, .62f, .72f);
+        RenderSettings.ambientEquatorColor = new Color(.36f, .44f, .46f);
+        RenderSettings.ambientGroundColor = new Color(.16f, .2f, .18f);
+        RenderSettings.fog = true;
+        RenderSettings.fogMode = FogMode.Linear;
+        RenderSettings.fogColor = new Color(.1f, .17f, .16f);
+        RenderSettings.fogStartDistance = 30f; RenderSettings.fogEndDistance = 95f;
+
+        if (FindAnyObjectByType<Light>() == null)
+        {
+            var moon = new GameObject("Luz de luna").AddComponent<Light>();
+            moon.type = LightType.Directional; moon.intensity = .9f; moon.color = new Color(.78f, .86f, 1f);
+            moon.shadows = LightShadows.Soft; moon.transform.rotation = Quaternion.Euler(52f, -35f, 0f);
+        }
+
+        var volume = new GameObject("Postprocesado zombi").AddComponent<Volume>();
+        volume.isGlobal = true;
+        var profile = ScriptableObject.CreateInstance<VolumeProfile>();
+        var bloom = profile.Add<Bloom>(true); bloom.intensity.Override(.8f); bloom.threshold.Override(.9f); bloom.scatter.Override(.6f);
+        var vignette = profile.Add<Vignette>(true); vignette.intensity.Override(.3f); vignette.smoothness.Override(.45f);
+        var color = profile.Add<ColorAdjustments>(true); color.saturation.Override(16f); color.contrast.Override(10f); color.postExposure.Override(.2f);
+        volume.sharedProfile = profile;
+    }
+
+    // ------------------------------------------------------------------ flow
+
+    public void StartGame(int players)
+    {
+        if (State != Phase.Lobby) return;
+        PlayerCount = Mathf.Clamp(players, 2, MaxPlayers);
+        PlayerPrefs.SetInt("SurvivalPlayers", PlayerCount);
+        if (MultiverseParty.InMatch)
+        {
+            var roster = MultiverseParty.CurrentRoster();
+            for (int i = 0; i < Mathf.Min(PlayerCount, roster.Count); i++) { Names[i] = roster.Names[i]; Colors[i] = roster.Colors[i]; Models[i] = PartyGames.ModelName(roster.Characters[i]); }
+        }
+        for (int i = 0; i < PlayerCount; i++)
+        {
+            var go = new GameObject(i == 0 ? "Jugador (tú)" : "Compañero " + Names[i]);
+            go.transform.SetPositionAndRotation(Level.SpawnPoint(i), Quaternion.identity);
+            var p = go.AddComponent<SurvivalPlayer>();
+            p.Initialize(this, i, i == 0, Names[i], Models[i], Colors[i], Weapons[i]);
+            if (i != 0 || AutoHuman) go.AddComponent<SurvivalBot>();
+            Team.Add(p);
+            if (i == 0) Human = p;
+        }
+        State = Phase.Countdown;
+        Countdown = 3.5f;
+        View?.Snap();
+    }
+
+    void Update()
+    {
+        float dt = Time.deltaTime;
+        if (State == Phase.Countdown)
+        {
+            float before = Countdown;
+            Countdown -= dt;
+            if (Mathf.CeilToInt(before) != Mathf.CeilToInt(Countdown) && Countdown > 0f) EscapeAudio.PlayUI("count");
+            if (Countdown <= 0f) { EscapeAudio.PlayUI("go"); BeginWave(1); }
+        }
+        else if (State == Phase.Wave) TickWave(dt);
+        else if (State == Phase.Break)
+        {
+            BreakLeft -= dt;
+            if (BreakLeft <= 0f) BeginWave(Wave + 1);
+        }
+        else if (State == Phase.Escape) TickEscape(dt);
+        else if (State == Phase.Won)
+        {
+            DriveTime += dt;
+            Level.Truck.Drive(DriveTime);
+        }
+
+        if (Fighting)
+        {
+            Elapsed += dt;
+            foreach (var p in Team)
+                if (p.transform.position.y < -4f) p.Teleport(Level.SpawnPoint(p.Slot));
+            if (LoosePart != null && LoosePart.transform.position.y < -4f) LoosePart.DropAt(Level.ClampInside(Level.TruckPos + Vector3.forward * 6f, 3f));
+        }
+        if (resultsAt > 0f && Time.time >= resultsAt) { resultsAt = -1f; HUD?.ShowResults(); }
+        if (Notice.Length > 0 && Time.time > noticeUntil) Notice = "";
+
+        var k = UnityEngine.InputSystem.Keyboard.current;
+        if (k != null && k.mKey.wasPressedThisFrame) EscapeAudio.ToggleMusic();
+    }
+
+    void BeginWave(int n)
+    {
+        Wave = n;
+        State = Phase.Wave;
+        queue.Clear();
+        Carrier = null; Boss = null;
+        var boss = BossFor(n);
+        int count = Mathf.RoundToInt((4f + 2.3f * n) * (.55f + .15f * PlayerCount));
+        if (boss != SurvivalZombie.BossKind.None) count = Mathf.RoundToInt(count * .65f); // the boss is the main event
+        // Wave modifier (from wave 2) and guarded-cache waves where the part must be fetched from a sector.
+        RestoreNight(); SpeedMod = 1f; mod = Mod.None; Modifier = "";
+        if (n >= 2)
+        {
+            var options = boss != SurvivalZombie.BossKind.None ? new[] { Mod.None, Mod.None, Mod.Veloz, Mod.Noche } : new[] { Mod.None, Mod.Veloz, Mod.Bombas, Mod.Noche, Mod.Esqueletos, Mod.Monstruos, Mod.Brutos };
+            mod = options[Random.Range(0, options.Length)];
+        }
+        Modifier = mod switch { Mod.Veloz => "HORDA VELOZ", Mod.Bombas => "LLUVIA DE BOMBAS", Mod.Noche => "NOCHE CERRADA", Mod.Esqueletos => "OLEADA DE ESQUELETOS", Mod.Monstruos => "INVASIÓN DE MONSTRUOS", Mod.Brutos => "BRUTOS SUELTOS", _ => "" };
+        if (mod == Mod.Veloz) SpeedMod = 1.25f;
+        if (mod == Mod.Noche) Night(true);
+        bombRainAt = Time.time + 4f;
+        bool cacheWave = boss == SurvivalZombie.BossKind.None && (n == 2 || n == 5 || n == 7) && Level.Caches.Count > 0;
+        if (cacheWave) count = Mathf.RoundToInt(count * .7f);
+        int carrierAt = cacheWave ? -1 : boss != SurvivalZombie.BossKind.None ? 0 : Mathf.Max(1, count / 2);
+        for (int i = 0; i < count; i++)
+        {
+            var spec = new SurvivalZombie.Spec { kind = PickKind(n), wave = n, part = -1 };
+            if (i == carrierAt)
+            {
+                spec.part = n - 1;
+                if (boss != SurvivalZombie.BossKind.None) spec.boss = boss;
+                else { spec.elite = true; spec.kind = EliteKind(n); }
+            }
+            if (i != carrierAt && mod == Mod.Esqueletos && Random.value < .5f) spec.kind = SurvivalZombie.ZombieKind.Skeleton;
+            if (i != carrierAt && mod == Mod.Monstruos && Random.value < .5f) spec.kind = new[] { SurvivalZombie.ZombieKind.Blob, SurvivalZombie.ZombieKind.Bomber, SurvivalZombie.ZombieKind.Ghost }[Random.Range(0, 3)];
+            queue.Add(spec);
+        }
+        if (mod == Mod.Brutos) for (int b = 0; b < 2; b++) queue.Insert(Random.Range(0, queue.Count + 1), new SurvivalZombie.Spec { kind = SurvivalZombie.ZombieKind.Brute, wave = n, part = -1 });
+        // keep the slow, dangerous kinds in check
+        int bombers = 0, brutes = 0;
+        for (int i = 0; i < queue.Count; i++)
+        {
+            var q = queue[i];
+            if (q.kind == SurvivalZombie.ZombieKind.Bomber && ++bombers > 3) q.kind = SurvivalZombie.ZombieKind.Basic;
+            if (q.kind == SurvivalZombie.ZombieKind.Brute && ++brutes > (mod == Mod.Brutos ? 3 : 1)) q.kind = SurvivalZombie.ZombieKind.Chubby;
+            queue[i] = q;
+        }
+        ActiveCache = null;
+        if (cacheWave) { ActiveCache = Level.Caches[n % Level.Caches.Count]; ActiveCache.Arm(this, n, n - 1); }
+        spawnTimer = boss != SurvivalZombie.BossKind.None ? 2.5f : 1f;
+        EscapeAudio.PlayUI("go", .7f);
+        string head = boss != SurvivalZombie.BossKind.None ? $"OLEADA {n} · ¡LLEGA {SurvivalZombie.BossTitle(boss)}!"
+            : ActiveCache != null ? $"OLEADA {n} · La pieza está en {ActiveCache.SectorName}, custodiada. ¡Id a por ella!" : $"OLEADA {n}/{TotalWaves} · ¡QUE VIENEN!";
+        Notify(Modifier.Length > 0 ? head + "  ·  " + Modifier : head);
+    }
+
+    public static SurvivalZombie.BossKind BossFor(int wave) => wave switch
+    {
+        3 => SurvivalZombie.BossKind.Gordo,
+        6 => SurvivalZombie.BossKind.Brazos,
+        9 => SurvivalZombie.BossKind.Costillas,
+        10 => SurvivalZombie.BossKind.Rey,
+        _ => SurvivalZombie.BossKind.None
+    };
+
+    static SurvivalZombie.ZombieKind EliteKind(int wave) => wave switch
+    {
+        2 or 7 => SurvivalZombie.ZombieKind.Runner,
+        4 or 8 => SurvivalZombie.ZombieKind.Chubby,
+        5 => SurvivalZombie.ZombieKind.Arm,
+        _ => SurvivalZombie.ZombieKind.Basic
+    };
+
+    static SurvivalZombie.ZombieKind PickKind(int wave)
+    {
+        float r0 = Random.value;
+        if (wave >= 2 && r0 < .15f) return SurvivalZombie.ZombieKind.Skeleton;
+        if (wave >= 3 && r0 < .23f) return SurvivalZombie.ZombieKind.Blob;
+        if (wave >= 4 && r0 < .31f) return SurvivalZombie.ZombieKind.Bomber;
+        if (wave >= 5 && r0 < .39f) return SurvivalZombie.ZombieKind.Ghost;
+        if (wave >= 6 && r0 < .43f) return SurvivalZombie.ZombieKind.Brute;
+        float runner = wave >= 2 ? .2f + .03f * wave : 0f;
+        float chubby = wave >= 4 ? .1f + .02f * wave : 0f;
+        float arm = wave >= 5 ? .14f : 0f;
+        float r = Random.value;
+        if (r < runner) return SurvivalZombie.ZombieKind.Runner;
+        if (r < runner + chubby) return SurvivalZombie.ZombieKind.Chubby;
+        if (r < runner + chubby + arm) return SurvivalZombie.ZombieKind.Arm;
+        return SurvivalZombie.ZombieKind.Basic;
+    }
+
+    void TickWave(float dt)
+    {
+        spawnTimer -= dt;
+        int cap = 16 + PlayerCount;
+        if (queue.Count > 0 && spawnTimer <= 0f && SurvivalZombie.All.Count < cap)
+        {
+            var spec = queue[0];
+            queue.RemoveAt(0);
+            var z = Spawn(spec, -1);
+            if (spec.boss != SurvivalZombie.BossKind.None) { Boss = z; Carrier = z; View?.Shake(.5f); EscapeAudio.PlayUI("zroar"); }
+            else if (spec.elite) { Carrier = z; Notify($"¡Un zombi brillante lleva: {PartNames[spec.part].ToUpperInvariant()}!"); }
+            spawnTimer = Mathf.Lerp(1.1f, .55f, Wave / (float)TotalWaves) * Random.Range(.7f, 1.3f);
+        }
+        for (int i = revives.Count - 1; i >= 0; i--)
+            if (Time.time >= revives[i].at)
+            {   // skeletons pull themselves back together
+                var z = Spawn(new SurvivalZombie.Spec { kind = SurvivalZombie.ZombieKind.Skeleton, wave = Wave, part = -1, revived = true }, -1, revives[i].pos);
+                SurvivalKit.Puff(revives[i].pos + Vector3.up * .4f, new Color(.9f, .88f, .8f), 6, .5f); EscapeAudio.Play("zgroan_1", revives[i].pos, .5f);
+                revives.RemoveAt(i);
+            }
+        if (mod == Mod.Bombas && Time.time >= bombRainAt)
+        {
+            bombRainAt = Time.time + Random.Range(2.8f, 4.2f);
+            var who = Team.Where(p => !p.Downed).OrderBy(_ => Random.value).FirstOrDefault();
+            if (who != null) { var tp = who.transform.position + new Vector3(Random.Range(-3f, 3f), 0, Random.Range(-3f, 3f)); SurvivalBomb.Throw(this, tp + new Vector3(4, 24, 4), tp, null, 1.4f); }
+        }
+        if (queue.Count == 0 && SurvivalZombie.All.Count == 0 && revives.Count == 0 && PartReady)
+        {
+            WaveClearedAt[Wave - 1] = Elapsed;
+            if (Wave >= TotalWaves) BeginEscape();
+            else BeginBreak();
+        }
+    }
+
+    void Night(bool on)
+    {
+        var sun = FindObjectsByType<Light>(FindObjectsSortMode.None).FirstOrDefault(l => l.type == LightType.Directional);
+        if (on && !nightOn) { nightOn = true; ambientBase = RenderSettings.ambientIntensity; RenderSettings.ambientIntensity *= .45f; if (sun != null) { sunBase = sun.intensity; sun.intensity *= .35f; } }
+        if (!on && nightOn) { nightOn = false; RenderSettings.ambientIntensity = ambientBase; if (sun != null && sunBase >= 0) sun.intensity = sunBase; }
+    }
+    void RestoreNight() => Night(false);
+    void OfferPerks()
+    {
+        foreach (var p in Team)
+        {
+            if (p.IsHuman && !AutoHuman && PerkUI != null) { PerkUI.Offer(p); continue; }
+            var roll = SurvivalPerks.Roll(p); if (roll.Length > 0) SurvivalPerks.Give(p, roll[Random.Range(0, roll.Length)]);
+        }
+    }
+
+    void BeginBreak()
+    {
+        State = Phase.Break;
+        RestoreNight(); SpeedMod = 1f; mod = Mod.None; Modifier = ""; ActiveCache = null;
+        OfferPerks();
+        Level.RefillCrates(2);
+        BreakLeft = breakSeconds;
+        foreach (var p in Team) { if (p.Downed) p.Revive(null, 60f); else p.Heal(40f); }
+        EscapeAudio.PlayUI("success");
+        EscapeAudio.Duck(2f);
+        Notify($"¡OLEADA {Wave} SUPERADA!  ·  Camioneta {PartsInstalled}/{TotalWaves}");
+    }
+
+    void BeginEscape()
+    {
+        State = Phase.Escape;
+        RestoreNight(); SpeedMod = 1f; mod = Mod.None; Modifier = ""; ActiveCache = null;
+        EscapeProgress = 0f;
+        escapeSpawnTimer = 1.5f;
+        foreach (var p in Team) { if (p.Downed) p.Revive(null, 70f); else p.Heal(60f); }
+        Level.Truck.SetReady();
+        View?.Shake(.4f);
+        EscapeAudio.PlayUI("zengine");
+        Notify("¡CAMIONETA REPARADA!  ·  ¡TODOS A LA CAMIONETA!");
+    }
+
+    void TickEscape(float dt)
+    {
+        // A final endless horde while the engine warms up.
+        escapeSpawnTimer -= dt;
+        if (escapeSpawnTimer <= 0f && SurvivalZombie.All.Count < 12 + PlayerCount)
+        {
+            Spawn(new SurvivalZombie.Spec { kind = Random.value < .45f ? SurvivalZombie.ZombieKind.Runner : SurvivalZombie.ZombieKind.Basic, wave = TotalWaves, part = -1 }, -1);
+            escapeSpawnTimer = Random.Range(.6f, 1.1f);
+        }
+        var standing = Team.Where(p => !p.Downed).ToList();
+        bool all = standing.Count > 0 && standing.All(p => Level.InTruckZone(p.transform.position));
+        EscapeProgress = all ? EscapeProgress + dt / escapeHoldSeconds : Mathf.Max(0f, EscapeProgress - dt * .08f);
+        if (EscapeProgress >= 1f) Win();
+    }
+
+    void Win()
+    {
+        if (State != Phase.Escape) return;
+        State = Phase.Won;
+        DriveTime = 0f;
+        foreach (var z in SurvivalZombie.All.ToList()) z.Freeze();
+        Level.Truck.Board(Team);
+        EscapeAudio.PlayUI("win");
+        EscapeAudio.Duck(6f);
+        Notify("¡ESCAPASTEIS DE LA CIUDAD!");
+        resultsAt = Time.time + 5f;
+        var mvp = MostValuable;
+        MultiverseParty.ReportMinigame(mvp != null ? mvp.Slot : -1);
+    }
+
+    void Lose()
+    {
+        if (!Fighting) return;
+        State = Phase.Lost;
+        EscapeAudio.PlayUI("lose");
+        EscapeAudio.Duck(5f);
+        Notify("LOS ZOMBIS OS HAN RODEADO");
+        resultsAt = Time.time + 2.5f;
+        MultiverseParty.ReportMinigame(-1);
+    }
+
+    // ------------------------------------------------------------------ zombies & parts
+
+    public SurvivalZombie Spawn(SurvivalZombie.Spec spec, int gate, Vector3? at = null)
+    {
+        if (gate < 0) { gate = Random.Range(0, Level.Gates.Length); if (gate == lastGate) gate = (gate + 1) % Level.Gates.Length; }
+        lastGate = gate;
+        var g = Level.Gates[gate];
+        Vector3 side = Vector3.Cross(Vector3.up, g.inner - g.outer).normalized;
+        float jitter = Random.Range(-2.4f, 2.4f);
+        Vector3 pos = at ?? g.outer + side * jitter;
+        var go = new GameObject(spec.boss != SurvivalZombie.BossKind.None ? "Jefe " + spec.boss : "Zombi " + spec.kind);
+        go.transform.SetPositionAndRotation(pos, Quaternion.LookRotation(g.inner - g.outer));
+        var z = go.AddComponent<SurvivalZombie>();
+        z.Initialize(this, spec, g.inner + side * jitter * .6f, at.HasValue);
+        return z;
+    }
+
+    public void SummonMinions(SurvivalZombie boss, int count)
+    {
+        for (int i = 0; i < count && SurvivalZombie.All.Count < 24; i++)
+        {
+            Vector3 off = Quaternion.Euler(0, i * 360f / count, 0) * Vector3.forward * (boss.Radius + 1.6f);
+            Vector3 p = Level.ClampInside(boss.transform.position + off, 1.5f);
+            var z = Spawn(new SurvivalZombie.Spec { kind = SurvivalZombie.ZombieKind.Runner, wave = Wave, part = -1 }, -1, p);
+            SurvivalKit.Puff(p + Vector3.up * .4f, new Color(.45f, .9f, .4f), 6, .6f);
+            z.Stagger(.6f);
+        }
+        EscapeAudio.Play("zroar", boss.transform.position, .8f);
+    }
+
+    public void OnZombieKilled(SurvivalZombie z, SurvivalPlayer by)
+    {
+        if (by != null) by.Kills++;
+        if (by != null && by.Perks[(int)SurvivalPerks.Kind.Vampiro] > 0) by.Heal(4f * by.Perks[(int)SurvivalPerks.Kind.Vampiro]);
+        if (by != null && !z.IsBoss && Random.value < .2f * by.Perks[(int)SurvivalPerks.Kind.Explosivo])
+        {   // perk: corpse explosion
+            MultiverseFX.Ring(z.transform.position, 3.2f, new Color(1, .6f, .15f), .4f); MultiverseFX.Burst(z.transform.position + Vector3.up, new Color(1, .55f, .15f), 20, 7);
+            EscapeAudio.Play("zbomb", z.transform.position, .5f);
+            foreach (var o in SurvivalZombie.All.ToArray()) if (o != z && !o.Dead && Vector3.Distance(o.transform.position, z.transform.position) < 3.2f) o.TakeHit(40f, (o.transform.position - z.transform.position).normalized, by);
+        }
+        float luck = 1f + (by != null ? .6f * by.Perks[(int)SurvivalPerks.Kind.Suerte] : 0f);
+        if (z == Boss) { Boss = null; View?.Shake(.6f); Notify($"¡{z.Title} DERROTADO!"); EscapeAudio.PlayUI("success", .8f); }
+        if (z == Carrier) Carrier = null;
+        if (z.PartIndex >= 0) DropPart(z.PartIndex, z.transform.position);
+        // Power-up drops: bosses always leave a medkit and a bomb; regular zombies sometimes drop one.
+        Vector3 at = z.transform.position + new Vector3(Random.Range(-1f, 1f), 0, Random.Range(-1f, 1f));
+        if (z.IsBoss) { SurvivalPowerUp.Drop(this, SurvivalPowerUp.Kind.Medkit, at); SurvivalPowerUp.Drop(this, SurvivalPowerUp.Kind.Bomb, at + Vector3.right * 2); }
+        else
+        {
+            float r = Random.value;
+            if (r < .06f * luck) SurvivalPowerUp.Drop(this, SurvivalPowerUp.Kind.Medkit, at);
+            else if (r < .09f * luck) SurvivalPowerUp.Drop(this, SurvivalPowerUp.Kind.Rage, at);
+            else if (r < .11f * luck) SurvivalPowerUp.Drop(this, SurvivalPowerUp.Kind.Bomb, at);
+        }
+    }
+
+    public void DropPart(int index, Vector3 at)
+    {
+        if (LoosePart != null) return;
+        var go = new GameObject("Pieza · " + PartNames[index]);
+        LoosePart = go.AddComponent<SurvivalPart>();
+        LoosePart.Initialize(this, index);
+        LoosePart.DropAt(Level.ClampInside(at, 2f));
+        EscapeAudio.PlayUI("key");
+        Notify($"¡Ha caído: {PartNames[index].ToUpperInvariant()}!  ·  Llévala a la camioneta");
+    }
+
+    public void TryPickup(SurvivalPlayer p)
+    {
+        var part = LoosePart;
+        if (part == null || part.Carrier != null || p.Downed || p.Carried != null || Time.time < part.PickableAt) return;
+        Vector3 d = part.transform.position - p.transform.position; d.y = 0f;
+        if (d.magnitude > 1.5f) return;
+        part.PickUp(p);
+        p.Carry(part);
+        EscapeAudio.Play("grab_" + Random.Range(0, 3), p.transform.position, .7f);
+        if (p.IsHuman) Notify($"Llevas: {part.Label.ToUpperInvariant()}  ·  A la camioneta y mantén E");
+    }
+
+    public void InstallPart(SurvivalPlayer p)
+    {
+        var part = p.Carried;
+        if (part == null) return;
+        p.ReleaseCarried();
+        PartsInstalled++;
+        p.Parts++;
+        LoosePart = null;
+        Level.Truck.SetProgress(PartsInstalled);
+        Destroy(part.gameObject);
+        EscapeAudio.PlayUI("unlock");
+        View?.Shake(.2f);
+        Notify($"{part.Label.ToUpperInvariant()} INSTALADA  ·  {PartsInstalled}/{TotalWaves}" + (p.IsHuman ? "" : "  ·  " + p.DisplayName));
+    }
+
+    // ------------------------------------------------------------------ team
+
+    public readonly List<string> DownLog = new();
+
+    public void OnPlayerDowned(SurvivalPlayer p)
+    {
+        DownLog.Add($"{Elapsed:0}s oleada {Wave}: {p.DisplayName} derribado por {p.LastHitBy} · zombis cerca {SurvivalZombie.All.Count(z => (z.transform.position - p.transform.position).magnitude < 4f)}");
+        if (Team.All(t => t.Downed)) Lose();
+        else Notify(p.IsHuman ? "¡Te han derribado! Un compañero puede reanimarte" : $"¡{p.DisplayName} está derribado! Mantén E cerca para reanimar");
+    }
+
+    public SurvivalPlayer NearestStanding(Vector3 from, float max = 999f)
+    {
+        SurvivalPlayer best = null; float bestD = max * max;
+        foreach (var p in Team)
+        {
+            if (p.Downed || !p.gameObject.activeInHierarchy) continue;
+            float d = (p.transform.position - from).sqrMagnitude;
+            if (d < bestD) { bestD = d; best = p; }
+        }
+        return best;
+    }
+
+    public SurvivalZombie NearestZombie(Vector3 from, float max)
+    {
+        SurvivalZombie best = null; float bestD = max * max;
+        foreach (var z in SurvivalZombie.All)
+        {
+            if (z.Dead) continue;
+            Vector3 d = z.transform.position - from; d.y = 0f;
+            float m = Mathf.Max(0f, d.magnitude - z.Radius);
+            if (m * m < bestD) { bestD = m * m; best = z; }
+        }
+        return best;
+    }
+
+    public void Notify(string text)
+    {
+        Notice = text; NoticeAt = Time.time; noticeUntil = Time.time + 3.4f;
+    }
+
+    public SurvivalPlayer MostValuable => Team.OrderByDescending(p => p.Score).FirstOrDefault();
+
+    public void Restart() { Time.timeScale = 1f; if (!MultiverseParty.InMatch) SceneManager.LoadScene(SceneManager.GetActiveScene().name); }
+
+    public void ReturnToHub()
+    {
+        Time.timeScale = 1f;
+        if (MultiverseParty.InMatch) return;
+        if (Application.CanStreamedLevelBeLoaded("MundoDeInicio")) SceneManager.LoadScene("MundoDeInicio");
+    }
+
+    void OnDestroy() => SurvivalZombie.All.Clear();
+}

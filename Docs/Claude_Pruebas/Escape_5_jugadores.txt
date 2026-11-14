@@ -1,0 +1,11 @@
+Equipo: 5 jugadores, 5 salas: RoomSymbols, RoomLibrary, RoomTiles, RoomBraziers, RoomPortal
+PASS Sala 1 Sala de los Símbolos: 17,5 s de juego
+PASS Sala 2 Biblioteca del Código: 17,1 s de juego
+PASS Sala 3 Puente de Baldosas: 6,1 s de juego
+PASS Sala 4 Cripta de las Antorchas: 6,1 s de juego
+PASS Sala 5 Portal del Multiverso: 17,5 s de juego
+PASS Torre completada: estado Won, sala activa 5, tiempo de juego 64 s de 900
+PASS Todo el equipo llegó a la sala final (5/5)
+PASS Pantalla de resultados mostrada
+INFO Más útil: Menta (7 acciones)
+INFO Punto de partida para: Menta (2 salas)

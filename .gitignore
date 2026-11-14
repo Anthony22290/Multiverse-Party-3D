@@ -35,6 +35,7 @@
 .DS_Store
 Thumbs.db
 Desktop.ini
+.opencode-local/
 
 # Build artifacts
 *.apk
@@ -42,3 +43,11 @@ Desktop.ini
 *.app
 *.unitypackage
 *.zip~
+
+# Claves de APIs 3D
+Tools/ai3d_keys.env
+
+# Registros y caches de herramientas locales
+ClaudeBridge/
+**/__pycache__/
+*.pyc

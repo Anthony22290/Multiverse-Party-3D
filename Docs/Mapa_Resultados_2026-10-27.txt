@@ -1,0 +1,31 @@
+PASS Cuatro escaleras con colisión continua
+PASS Rampa a popa - colisión continua x=4,12 123 puntos sin huecos
+PASS Rampa a popa - colisión continua x=4,12 subida sin atravesar suelo
+PASS Rampa a popa - colisión continua x=4,12 subida llega al descansillo ((4.12, 6.76, -11.11))
+PASS Rampa a popa - colisión continua x=4,12 subida apoyo estable
+PASS Rampa a popa - colisión continua x=4,12 bajada sin atravesar suelo
+PASS Rampa a popa - colisión continua x=4,12 bajada llega al descansillo ((4.12, 3.87, -5.46))
+PASS Rampa a popa - colisión continua x=4,12 bajada apoyo estable
+PASS Rampa a proa - colisión continua x=4,12 123 puntos sin huecos
+PASS Rampa a proa - colisión continua x=4,12 subida sin atravesar suelo
+PASS Rampa a proa - colisión continua x=4,12 subida llega al descansillo ((4.12, 5.52, 6.25))
+PASS Rampa a proa - colisión continua x=4,12 subida apoyo estable
+PASS Rampa a proa - colisión continua x=4,12 bajada sin atravesar suelo
+PASS Rampa a proa - colisión continua x=4,12 bajada llega al descansillo ((4.12, 3.87, 0.18))
+PASS Rampa a proa - colisión continua x=4,12 bajada apoyo estable
+PASS Rampa a popa - colisión continua x=-4,12 123 puntos sin huecos
+PASS Rampa a popa - colisión continua x=-4,12 subida sin atravesar suelo
+PASS Rampa a popa - colisión continua x=-4,12 subida llega al descansillo ((-4.12, 6.70, -11.02))
+PASS Rampa a popa - colisión continua x=-4,12 subida apoyo estable
+PASS Rampa a popa - colisión continua x=-4,12 bajada sin atravesar suelo
+PASS Rampa a popa - colisión continua x=-4,12 bajada llega al descansillo ((-4.12, 3.87, -5.46))
+PASS Rampa a popa - colisión continua x=-4,12 bajada apoyo estable
+PASS Rampa a proa - colisión continua x=-4,12 123 puntos sin huecos
+PASS Rampa a proa - colisión continua x=-4,12 subida sin atravesar suelo
+PASS Rampa a proa - colisión continua x=-4,12 subida llega al descansillo ((-4.12, 5.52, 6.25))
+PASS Rampa a proa - colisión continua x=-4,12 subida apoyo estable
+PASS Rampa a proa - colisión continua x=-4,12 bajada sin atravesar suelo
+PASS Rampa a proa - colisión continua x=-4,12 bajada llega al descansillo ((-4.12, 3.87, 0.29))
+PASS Rampa a proa - colisión continua x=-4,12 bajada apoyo estable
+PASS 02 - Castillo de proa - suelo continuo base cerrada bajo el descansillo
+PASS 03 - Alcázar de popa - suelo continuo base cerrada bajo el descansillo

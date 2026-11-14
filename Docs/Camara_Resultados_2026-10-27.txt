@@ -1,0 +1,9 @@
+FAIL Frames advance during the camera test
+FAIL Camera follows the local character at 8 m
+FAIL Camera looks at the character
+PASS Camera retracts before a wall
+FAIL Camera returns smoothly after obstruction clears
+FAIL Orbit rotates around the character
+PASS Close zoom stays at the requested distance
+PASS Menu releases the cursor
+PASS Eliminated player spectates a survivor

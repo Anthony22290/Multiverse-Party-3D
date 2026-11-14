@@ -1,0 +1,9 @@
+PASS Bot usa escalera hacia proa ((4.18, 5.45, 6.10))
+PASS Bot usa escalera hacia popa ((4.07, 6.61, -10.91))
+PASS Ronda normal inicia con seis tripulantes
+PASS Ronda completa por eliminaciones en 52,1 segundos
+PASS Cañones avisan y disparan durante la ronda
+OBS Tiburón activo durante ronda: True
+PASS Peligros quedan limpios al terminar
+PASS R reinicia los seis y la cuenta atrás
+PASS Reinicio limpia agarres y cuerpos congelados

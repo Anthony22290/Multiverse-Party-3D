@@ -1,0 +1,15 @@
+PASS Sala CL1830 creada y cliente lanzado (pid 39348)
+FAIL el cliente no se unió
+PASS Sala CL4402 creada y cliente lanzado (pid 38384)
+PASS Cliente se unió · miembros 2
+PASS Partida iniciada · 4 miembros (2 bots)
+INFO CÓDIGO MORTAL: listos=True · invitado en el hueco 1 · se movió 0,0 m · corriendo True · invitado títere=True último dato hace 0,05 s · vivos 4
+PASS Ronda resuelta: Cliente gana CÓDIGO MORTAL · +1 punto
+INFO CARRERAS LOCAS: listos=True · invitado en el hueco 1 · se movió 17,3 m · empezó True t 18,5 · kart invitado títere=True último dato hace 0,00 s · bots velocidad 0/28
+PASS Ronda resuelta: Cliente gana CARRERAS LOCAS · +1 punto
+INFO ARENA DEL CAOS: listos=True · invitado en el hueco 1 · se movió 1,3 m · jugando True fin False · pirata invitado vivo=True remoto=True
+PASS Ronda resuelta: Cliente gana ARENA DEL CAOS · +1 punto
+INFO INVASIÓN ZOMBI: listos=True · invitado en el hueco 1 · se movió 1,7 m · fase Wave oleada 2 · invitado en red=True último dato hace 0,01 s vida 100 bajas 2 golpes 9 · zombis 6 piezas 1
+PASS Ronda resuelta: Cliente gana INVASIÓN ZOMBI · +1 punto
+INFO SALA DE ESCAPE: listos=True · invitado en el hueco 1 · se movió 4,6 m · fase Playing sala 1/11 resueltas 0 · invitado títere=True último dato hace 0,00 s acciones 0 resolvió 0 · salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal]
+PASS Ronda resuelta: ¡Cliente llega a 5 puntos!

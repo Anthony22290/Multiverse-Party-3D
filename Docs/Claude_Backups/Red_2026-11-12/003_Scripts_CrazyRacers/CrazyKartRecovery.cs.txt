@@ -1,0 +1,33 @@
+using UnityEngine;
+public sealed class CrazyKartRecovery : MonoBehaviour
+{
+    CrazyKartController kart;
+    CrazyKartDirector director;
+    Rigidbody body;
+    CrazyKartRoadSurface[] surfaces;
+    float unsafeTime, cooldownUntil;
+    public int AutomaticRecoveries { get; private set; }
+    void Start()
+    {
+        kart=GetComponent<CrazyKartController>();body=GetComponent<Rigidbody>();
+        director=FindAnyObjectByType<CrazyKartDirector>();surfaces=FindObjectsByType<CrazyKartRoadSurface>();
+    }
+    void FixedUpdate()
+    {
+        if(kart==null||!kart.enabled||director==null||!director.Playing||kart.HasFinished||Time.time<cooldownUntil)return;
+        if(Physics.Raycast(body.position+Vector3.up*.1f,Vector3.down,out var hit,.85f,~0,QueryTriggerInteraction.Ignore)
+            &&hit.normal.y>.4f&&hit.collider.GetComponent<CrazyKartRoadSurface>()!=null){unsafeTime=0;return;}
+        float closest=float.MaxValue;Vector3 road=Vector3.zero;bool past=false;
+        foreach(var surface in surfaces)if(surface!=null&&surface.Closest(body.position,out var q,out float edge,out bool beyond)){
+            float metric=Mathf.Max(0,edge)+Mathf.Abs(body.position.y-q.y)*.015f;
+            if(metric<closest){closest=metric;road=q;past=beyond;}
+        }
+        // Over a jump gap the kart may dip below the lip: only count it once it has really fallen.
+        bool below=closest<float.MaxValue&&body.position.y<road.y-(past?4f:.8f);
+        bool outside=closest>12||body.position.y<-2;
+        unsafeTime=below||outside?unsafeTime+Time.fixedDeltaTime:0;
+        if(unsafeTime>(below?.18f:1.25f)){
+            AutomaticRecoveries++;kart.Recover();unsafeTime=0;cooldownUntil=Time.time+1.3f;
+        }
+    }
+}

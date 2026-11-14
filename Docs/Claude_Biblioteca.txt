@@ -1,0 +1,66 @@
+Biblioteca generada: 65 prefabs
+Comun/Farola: 336 tris
+Comun/Banco: 332 tris
+Comun/Barandilla: 300 tris
+Comun/Valla: 168 tris
+Comun/Jardinera: 416 tris
+Comun/Arbol redondo: 272 tris
+Comun/Pino: 56 tris
+Comun/Arbusto: 240 tris
+Comun/Poste indicador: 218 tris
+Comun/Bandera Roja: 96 tris
+Comun/Bandera Turquesa: 96 tris
+Comun/Bandera Amarilla: 96 tris
+Comun/Bandera Rosa: 96 tris
+Comun/Bandera Morada: 96 tris
+Comun/Bandera Verde: 96 tris
+Comun/Guirnalda: 224 tris
+Comun/Cajas: 384 tris
+Comun/Nube: 320 tris
+Comun/Maceta: 272 tris
+Hub/Puesto mercado Rojo: 854 tris
+Hub/Puesto mercado Turquesa: 854 tris
+Hub/Puesto mercado Amarillo: 854 tris
+Hub/Casa Roja: 1552 tris
+Hub/Casa Azul: 1552 tris
+Hub/Casa Turquesa: 1552 tris
+Hub/Faro del multiverso: 756 tris
+Hub/Fuente: 624 tris
+Hub/Kiosco info: 408 tris
+Hub/Estandarte Piratas: 214 tris
+Hub/Estandarte Zombis: 214 tris
+Hub/Estandarte Criaturas: 214 tris
+Hub/Estandarte Carreras: 214 tris
+Hub/Estandarte Codigo: 214 tris
+Piratas/Bandera pirata: 144 tris
+Piratas/Choza de playa: 294 tris
+Piratas/Torre vigía: 494 tris
+Piratas/Faro pirata: 640 tris
+Piratas/Bote de remos: 276 tris
+Piratas/Boya: 112 tris
+Piratas/Antorcha tiki: 88 tris
+Piratas/Tesoro: 272 tris
+Piratas/Muelle pirata: 536 tris
+Carreras/Grada: 2708 tris
+Carreras/Pila de neumáticos: 1080 tris
+Carreras/Valla publicitaria Turbo: 368 tris
+Carreras/Valla publicitaria Helados: 368 tris
+Carreras/Valla publicitaria Derrape: 368 tris
+Carreras/Torre de control: 378 tris
+Carreras/Torre socorrista: 340 tris
+Carreras/Sombrilla Roja: 40 tris
+Carreras/Sombrilla Turquesa: 40 tris
+Carreras/Boxes: 384 tris
+Carreras/Bandera a cuadros: 280 tris
+Carreras/Carrito de helados: 480 tris
+CodigoMortal/Edificio A: 1882 tris
+CodigoMortal/Edificio B: 1978 tris
+CodigoMortal/Edificio C: 1882 tris
+CodigoMortal/Edificio D: 2362 tris
+CodigoMortal/Farola moderna: 164 tris
+CodigoMortal/Banco moderno: 132 tris
+CodigoMortal/Kit kiosco Coral: 542 tris
+CodigoMortal/Kit kiosco Menta: 542 tris
+CodigoMortal/Pantalla gigante: 104 tris
+CodigoMortal/Maceta moderna: 168 tris
+CodigoMortal/Cartel neón flecha: 80 tris

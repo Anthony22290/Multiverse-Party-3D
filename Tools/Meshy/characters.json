@@ -1,0 +1,17 @@
+{
+ "Heroe": {"height": 1.6, "polys": 10000,
+  "prompt": "Cheerful young adventurer hero, round friendly face with big eyes and a small smile, messy spiky hair, short scarf, sleeveless padded vest over a shirt, wide leather belt with pouches, fingerless gloves, baggy shorts, chunky boots. Neutral original design, no weapon.",
+  "texture": "Orange scarf, teal vest, cream shirt, brown leather belt and boots, dark brown hair, warm skin tone."},
+ "Gordo": {"height": 2.2, "polys": 12000,
+  "prompt": "Huge obese zombie brute, enormous round belly with crude stitches, tiny bald head sunk into massive shoulders, small angry eyes, torn stained tank top too small for him, ripped work trousers held by a rope, giant swollen fists, short thick legs, bare feet.",
+  "texture": "Pale sickly green skin with purple bruises, dirty white tank top with brown stains, faded blue trousers, yellowish eyes."},
+ "Brazos": {"height": 2.3, "polys": 12000,
+  "prompt": "Tall skinny hunched zombie with extremely long arms that hang down to its knees, huge bony hands with long fingers, gaunt face with an open jaw and crooked teeth, messy long hair, ragged sleeveless shirt, torn trousers, thin legs.",
+  "texture": "Grey-green rotten skin, dark red ragged shirt, dark grey trousers, black hair, yellow glowing eyes."},
+ "Costillas": {"height": 2.1, "polys": 12000,
+  "prompt": "Lean agile zombie with an exposed ribcage showing through a large hole in its torn shirt, half skull face with one eye socket, bony arms, ragged jacket with torn sleeves, short trousers, mismatched shoes, ready-to-run athletic stance.",
+  "texture": "Blue-green zombie skin, off-white bones on ribs and jaw, torn brown jacket, olive trousers, one red sneaker and one black boot, orange glowing eye."},
+ "Rey": {"height": 2.5, "polys": 14000,
+  "prompt": "Zombie king boss, large bulky body, rusty jagged crown on a rotting head, glowing eyes, long torn royal cape with a fur collar, heavy armored shoulder pads, chest plate with a skull emblem, big clawed hands, tattered robe skirt, armored boots.",
+  "texture": "Rotting green skin, tarnished gold crown, deep red cape with white fur collar, dark iron armor with gold trim, bright green glowing eyes."}
+}

@@ -1,0 +1,11 @@
+PASS W moves through actual input path
+PASS Four Space jumps land without relaunch, max height=1,02
+PASS Tilted fall 3m settles; upward=0,11, up=1,00
+PASS Tilted fall 8m settles; upward=0,07, up=1,00
+PASS Tilted fall 12m settles; upward=0,01, up=1,00
+PASS E accumulates combat damage via keyboard
+PASS Both mouse buttons grip the rival
+PASS Shift activates lift while gripping
+PASS F releases and throws toward camera aim
+PASS Bot captures and throws outward through rail opening
+PASS Carrier stays inside deck at release

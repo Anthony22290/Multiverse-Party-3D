@@ -1,0 +1,1 @@
+PASS Expanded solid shortcut driven end-to-end with W: checkpoint=22, lap=1, automatic recoveries=0

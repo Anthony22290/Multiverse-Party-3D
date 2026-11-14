@@ -1,0 +1,15 @@
+PASS Road elevation reaches 3 m
+PASS Shortcut is shorter than 50 m detour
+PASS Road collision follows all 32 checkpoints: 32
+PASS Driven shortcut crosses 19,20,21,22 without granting lap, actual=22
+PASS Imported wheels rotate while driving
+PASS Missing narrow shortcut drops below bridge
+PASS Recovery returns from shortcut fall
+PASS Object 1 shows unique icon and use instructions
+PASS Object 2 shows unique icon and use instructions
+PASS Object 3 shows unique icon and use instructions
+PASS Object 4 shows unique icon and use instructions
+PASS Trap placed on elevated road, not underground
+PASS Four separate painted car-body materials
+PASS Finish event creates celebration confetti
+PASS Results identify the winner

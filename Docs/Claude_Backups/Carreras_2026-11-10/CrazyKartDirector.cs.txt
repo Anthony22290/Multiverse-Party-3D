@@ -1,0 +1,75 @@
+using System.Collections.Generic;
+using System.Linq;
+using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
+public sealed class CrazyKartDirector : MonoBehaviour
+{
+    [SerializeField] List<Vector3> waypoints = new List<Vector3>();
+    readonly List<CrazyKartController> karts = new List<CrazyKartController>();
+    readonly List<CrazyKartController> finishers = new List<CrazyKartController>();
+    public int laps = 3;
+    public float roadHalfWidth = 6;
+    float countdown = 3.5f;
+    CrazyKartShortcut shortcut;
+    public CrazyKartShortcut Shortcut => shortcut;
+    public float RoundTime { get; private set; }
+    public bool Finished { get; private set; }
+    public bool Playing => countdown <= 0 && !Finished;
+    public float Countdown => countdown;
+    public IReadOnlyList<CrazyKartController> Karts => karts;
+    public IReadOnlyList<CrazyKartController> Finishers => finishers;
+    public IReadOnlyList<Vector3> Waypoints => waypoints;
+    public void Register(CrazyKartController kart) { if (!karts.Contains(kart)) karts.Add(kart); }
+    public void AddWaypoint(Vector3 p) => waypoints.Add(p);
+    public Vector3 GetWaypointPosition(int i) => waypoints.Count == 0 ? Vector3.zero : waypoints[(i % waypoints.Count + waypoints.Count) % waypoints.Count];
+    void Start()
+    {
+        Application.runInBackground = true;
+        shortcut=FindAnyObjectByType<CrazyKartShortcut>();
+        if(GetComponent<CrazyRaceCelebration>()==null)gameObject.AddComponent<CrazyRaceCelebration>();
+        foreach (var k in FindObjectsByType<CrazyKartController>(FindObjectsSortMode.None)) Register(k);
+        if (waypoints.Count == 0)
+            foreach (var c in FindObjectsByType<CrazyKartCheckpointIndex>(FindObjectsSortMode.None).OrderBy(c=>c.index)) waypoints.Add(c.transform.position - Vector3.up);
+        if (GetComponent<CrazyKartHUD>() == null) gameObject.AddComponent<CrazyKartHUD>();
+    }
+    void Update()
+    {
+        var keys = Keyboard.current;
+        if (keys != null && keys.escapeKey.wasPressedThisFrame) ReturnToHub();
+        if (Finished) { if (keys != null && keys.enterKey.wasPressedThisFrame) Restart(); return; }
+        if (countdown > 0) { countdown -= Time.deltaTime; return; }
+        RoundTime += Time.deltaTime;
+    }
+    public void Finish(CrazyKartController kart)
+    {
+        if (!finishers.Contains(kart)) finishers.Add(kart);
+        if (kart.IsHuman || finishers.Count == karts.Count) Finished = true;
+    }
+    public void Restart() => SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+    public void ReturnToHub() => SceneManager.LoadScene("MundoDeInicio");
+    public float Progress(CrazyKartController kart)
+    {
+        var a = GetWaypointPosition(kart.CurrentCheckpoint); var b = GetWaypointPosition(kart.NextCheckpoint);
+        float fraction = Mathf.Clamp01(Vector3.Dot(kart.transform.position - a, b - a) / Mathf.Max(.1f,(b-a).sqrMagnitude));
+        return (kart.CurrentLap - 1) * waypoints.Count + kart.CurrentCheckpoint + fraction;
+    }
+    public int Position(CrazyKartController kart)
+    {
+        if (kart.HasFinished) return finishers.IndexOf(kart) + 1;
+        return 1 + karts.Count(k=>k != kart && (k.HasFinished || Progress(k) > Progress(kart)));
+    }
+    public float DistanceToRoad(Vector3 p)
+    {
+        p.y=0; float best=float.MaxValue;
+        for(int i=0;i<waypoints.Count;i++)
+        {
+            Vector3 a=GetWaypointPosition(i), b=GetWaypointPosition(i+1); a.y=b.y=0;
+            float t=Mathf.Clamp01(Vector3.Dot(p-a,b-a)/Mathf.Max(.01f,(b-a).sqrMagnitude));
+            best=Mathf.Min(best,Vector3.Distance(p,Vector3.Lerp(a,b,t)));
+        }
+        if(shortcut!=null)best=Mathf.Min(best,shortcut.RoadDistance(p,roadHalfWidth));
+        return best;
+    }
+}
+

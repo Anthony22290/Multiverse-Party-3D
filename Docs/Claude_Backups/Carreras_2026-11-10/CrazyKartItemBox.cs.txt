@@ -1,0 +1,23 @@
+using UnityEngine;
+public sealed class CrazyKartItemBox : MonoBehaviour
+{
+    float availableAt;
+    Renderer[] renderers;
+    Collider trigger;
+    void Awake() { renderers = GetComponentsInChildren<Renderer>(); trigger = GetComponent<Collider>(); trigger.isTrigger = true; }
+    public void Collect(CrazyKartController kart)
+    {
+        if (Time.time < availableAt || !kart.GiveItem(Random.Range(1, 5))) return;
+        availableAt = Time.time + 5;
+        CrazyRaceBurst.Spawn(transform.position,new Color(1,.85f,.15f),false);
+        foreach (var r in renderers) r.enabled = false;
+        trigger.enabled = false;
+    }
+    void Update()
+    {
+        transform.Rotate(0, 65 * Time.deltaTime, 0);
+        if (!trigger.enabled && Time.time >= availableAt)
+        { trigger.enabled = true; foreach (var r in renderers) r.enabled = true; }
+    }
+}
+

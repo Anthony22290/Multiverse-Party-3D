@@ -1,0 +1,165 @@
+using UnityEngine;
+using UnityEngine.AI;
+using UnityEngine.InputSystem;
+
+public sealed class MortalCodeActor : MonoBehaviour
+{
+    public MortalCodeDirector Director { get; private set; }
+    public bool IsHuman { get; private set; }
+    public string DisplayName { get; private set; }
+    public bool Alive { get; private set; } = true;
+    public bool Protected => Time.time < protectionUntil;
+    public bool ProtectorAvailable { get; private set; } = true;
+    public float ProtectionRemaining => Mathf.Max(0, protectionUntil - Time.time);
+    public float LockedUntil { get; set; }
+    public int Eliminations { get; set; }
+    public Vector3 Eye => transform.position + Vector3.up * 1.5f;
+    public CharacterController Controller { get; private set; }
+    public NavMeshAgent Agent { get; private set; }
+    float vertical, protectionUntil, recoverHold, boostUntil;
+    public bool Boosted => Time.time < boostUntil;
+    public float BoostRemaining => Mathf.Max(0, boostUntil - Time.time);
+    /// <summary>Online: simulated on another computer, moved from the network (2026-11-12).</summary>
+    public bool Puppet { get; private set; }
+    public NetPose NetPose { get; } = new NetPose();
+    Material shieldMat; Color tint; bool wasProtected;
+    Vector3 safe, previous;
+    Animator animator;
+    string animationState;
+    GameObject shield;
+
+    public void Initialize(MortalCodeDirector director, bool human, string displayName, string model, Color tint, bool puppet = false)
+    {
+        Director=director; IsHuman=human; DisplayName=displayName; safe=previous=transform.position; Puppet=puppet && !human;
+        if (Puppet)
+        {
+            var col=gameObject.AddComponent<CapsuleCollider>(); col.height=1.8f; col.radius=.36f; col.center=Vector3.up*.9f;
+        }
+        else if (human)
+        {
+            Controller=gameObject.AddComponent<CharacterController>(); Controller.height=1.8f; Controller.center=Vector3.up*.9f;
+            Controller.radius=.36f; Controller.stepOffset=.3f; Controller.slopeLimit=48; Controller.skinWidth=.035f;
+        }
+        else
+        {
+            var col=gameObject.AddComponent<CapsuleCollider>(); col.height=1.8f; col.radius=.36f; col.center=Vector3.up*.9f;
+            Agent=gameObject.AddComponent<NavMeshAgent>(); Agent.height=1.8f; Agent.radius=.38f; Agent.speed=5.2f;
+            Agent.acceleration=18; Agent.angularSpeed=360; Agent.stoppingDistance=.65f;
+            if(NavMesh.SamplePosition(transform.position,out var hit,3,NavMesh.AllAreas)) Agent.Warp(hit.position);
+            gameObject.AddComponent<MortalCodeBot>();
+        }
+        var prefab=Resources.Load<GameObject>("PirateCharacters/Characters_"+model);
+        var visual=PirateArenaVisuals.AddModel(prefab,transform,1.75f,director.characterAtlas,false);
+        if(visual!=null)
+        {
+            foreach(var c in visual.GetComponentsInChildren<Collider>()) Destroy(c);
+            animator=visual.GetComponentInChildren<Animator>();
+            if(animator!=null){animator.applyRootMotion=false;animator.cullingMode=AnimatorCullingMode.AlwaysAnimate;}
+        }
+        var marker=GameObject.CreatePrimitive(PrimitiveType.Cylinder); marker.name="Identidad"; marker.transform.SetParent(transform,false);
+        marker.transform.localPosition=Vector3.up*.035f;marker.transform.localScale=new Vector3(.95f,.025f,.95f); Destroy(marker.GetComponent<Collider>());
+        var m=new Material(Shader.Find("Universal Render Pipeline/Lit")); m.color=tint; marker.GetComponent<Renderer>().sharedMaterial=m;
+        this.tint=tint;
+        // Protector: a glowing bubble in the actor's colour instead of a flat disc.
+        shield=GameObject.CreatePrimitive(PrimitiveType.Sphere); shield.name="Protector activo";shield.transform.SetParent(transform,false);
+        shield.transform.localPosition=Vector3.up*.95f;shield.transform.localScale=new Vector3(1.5f,2.1f,1.5f);Destroy(shield.GetComponent<Collider>());
+        shieldMat=MultiverseFX.Glow(Color.Lerp(tint,Color.white,.3f),.12f,2.2f,true);shield.GetComponent<Renderer>().sharedMaterial=shieldMat;shield.SetActive(false);
+    }
+    void Update()
+    {
+        shield?.SetActive(Alive && Protected);
+        if(Alive && wasProtected && !Protected){ if(IsHuman)MortalCodeAudio.UI("shield_off",.7f); }
+        wasProtected=Alive && Protected;
+        if(Agent!=null && Agent.enabled)Agent.speed=Boosted?7.8f:5.2f;
+        if(!Alive) return;
+        if(Puppet && NetPose.Get(out var netPos,out var netRot)) transform.SetPositionAndRotation(netPos,netRot);
+        if(IsHuman)
+        {
+            var k=Keyboard.current;
+            bool input=Director.Running && Director.HUD!=null && !Director.HUD.TerminalOpen && !Director.HUD.MenuOpen;
+            Vector3 move=Vector3.zero;
+            if(input && k!=null)
+            {
+                var axis=new Vector2((k.dKey.isPressed?1:0)-(k.aKey.isPressed?1:0),(k.wKey.isPressed?1:0)-(k.sKey.isPressed?1:0));
+                move=Quaternion.Euler(0,Director.View.Yaw,0)*new Vector3(axis.x,0,axis.y);
+                if(k.qKey.wasPressedThisFrame) ActivateProtector();
+                if(k.rKey.isPressed) {recoverHold+=Time.deltaTime;if(recoverHold>=1.2f){Recover();recoverHold=0;}} else recoverHold=0;
+            }
+            Move(move,Time.deltaTime,input && k!=null && k.spaceKey.wasPressedThisFrame);
+        }
+        if(!Puppet && transform.position.y < -6) Recover();
+        float speed=(transform.position-previous).magnitude/Mathf.Max(Time.deltaTime,.001f);previous=transform.position;
+        if(animator!=null)
+        {
+            string state=speed> .4f?"Base Layer.Walk":"Base Layer.Idle";
+            if(state!=animationState && animator.HasState(0,Animator.StringToHash(state))){animator.CrossFade(state,.12f);animationState=state;}
+        }
+    }
+    public void Move(Vector3 direction,float delta,bool jump)
+    {
+        if(Controller==null || !Controller.enabled || !Alive)return;
+        if(Controller.isGrounded){ if(vertical<0)vertical=-2;if(jump)vertical=7; }
+        float remaining=Mathf.Min(delta,.2f);
+        while(remaining>0)
+        {
+            float dt=Mathf.Min(remaining,1/60f);remaining-=dt;vertical=Mathf.Max(-28,vertical-22*dt);
+            var flags=Controller.Move((Vector3.ClampMagnitude(direction,1)*(Boosted?9f:6.2f)+Vector3.up*vertical)*dt);
+            if((flags&CollisionFlags.Above)!=0 && vertical>0)vertical=0;
+            if((flags&CollisionFlags.Below)!=0 && vertical<0)vertical=-2;
+        }
+        if(direction.sqrMagnitude>.01f)transform.rotation=Quaternion.Slerp(transform.rotation,Quaternion.LookRotation(direction),delta*14);
+        if(Controller.isGrounded && NavMesh.SamplePosition(transform.position,out var hit,1,NavMesh.AllAreas) && Mathf.Abs(hit.position.y-transform.position.y)<.5f) safe=hit.position;
+    }
+    public bool ActivateProtector()
+    {
+        if(!Alive||!Director.Running||!ProtectorAvailable)return false;
+        if(IsHuman && Director.IsClient){Director.Net.RequestProtector();return false;}   // the host decides; the bubble arrives with its state
+        ProtectorAvailable=false;protectionUntil=Time.time+8;
+        MortalCodeAudio.At("shield_on",transform.position,.8f); MultiverseFX.Ring(transform.position,2.2f,tint);
+        Director.Tell(this,"Protector: 8 s · no puedes eliminar mientras esté activo");
+        return true;
+    }
+    public void Recover()
+    {
+        if(!Alive)return;
+        var p=safe;
+        // Search neighbouring free positions instead of placing two players inside each other.
+        for(int i=0;i<16;i++)
+        {
+            var offset=i==0?Vector3.zero:Quaternion.Euler(0,i*137.5f,0)*Vector3.forward*(1+i*.22f);
+            if(!NavMesh.SamplePosition(safe+offset,out var h,1.2f,NavMesh.AllAreas))continue;
+            bool occupied=false;
+            foreach(var a in Director.Actors)if(a!=this && a.Alive && Vector3.Distance(a.transform.position,h.position)<1.1f)occupied=true;
+            if(!occupied){p=h.position;break;}
+        }
+        if(Controller!=null)Controller.enabled=false;
+        transform.position=p+Vector3.up*.08f;vertical=0;
+        if(Controller!=null)Controller.enabled=true;
+        if(Agent!=null && Agent.enabled)Agent.Warp(p);
+        if(IsHuman){Director.View?.Snap();Director.Notify("De vuelta en una zona segura");}
+    }
+    public void Boost(float seconds){boostUntil=Mathf.Max(boostUntil,Time.time+seconds);MultiverseFX.Ring(transform.position,2f,new Color(1,.75f,.2f));}
+    public void Eliminate()
+    {
+        // Glitch-out: lightning, shards in the actor's colour and a floating tag before vanishing.
+        MultiverseFX.Lightning(transform.position); MultiverseFX.Burst(Eye,tint,30,8); MultiverseFX.Ring(transform.position,3.5f,tint,.6f);
+        MultiverseFX.FloatText(Eye+Vector3.up*.8f,"ELIMINADO\n"+DisplayName.ToUpperInvariant(),tint,.6f,1.8f);
+        Alive=false;
+        if(Agent!=null && Agent.enabled){Agent.isStopped=true;Agent.enabled=false;}
+        foreach(var c in GetComponents<Collider>())c.enabled=false;
+        foreach(var r in GetComponentsInChildren<Renderer>())r.enabled=false;
+        if(IsHuman)Director.HUD?.CloseTerminal();
+    }
+    /// <summary>Client: this actor's state from the host.</summary>
+    public void ApplyNet(bool alive,float protection,bool protectorAvailable,float boost,int eliminations,float locked)
+    {
+        if(!alive && Alive){Eliminate();MortalCodeAudio.At("eliminated",transform.position,1);if(IsHuman)MortalCodeAudio.UI("eliminated");}
+        bool wasProt=Protected;protectionUntil=protection>0?Time.time+protection:0;
+        if(!wasProt && Protected && Alive){MortalCodeAudio.At("shield_on",transform.position,.8f);MultiverseFX.Ring(transform.position,2.2f,tint);}
+        ProtectorAvailable=protectorAvailable;
+        bool wasBoost=Boosted;boostUntil=boost>0?Time.time+boost:0;
+        if(!wasBoost && Boosted)MultiverseFX.Ring(transform.position,2f,new Color(1,.75f,.2f));
+        Eliminations=eliminations;LockedUntil=locked>0?Time.time+locked:0;
+    }
+    void OnDestroy(){if(shieldMat!=null)Destroy(shieldMat);}
+}

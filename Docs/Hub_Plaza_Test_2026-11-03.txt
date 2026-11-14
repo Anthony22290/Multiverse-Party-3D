@@ -1,0 +1,14 @@
+PASS Floor coverage 324/324
+PASS Ground contact at (-30.00, 4.00, -20.00) feet=0,84
+PASS Ground contact at (30.00, 4.00, -20.00) feet=0,84
+PASS Ground contact at (-30.00, 4.00, 35.00) feet=0,96
+PASS Ground contact at (30.00, 4.00, 35.00) feet=0,92
+PASS Ground contact at (-10.00, 4.00, 5.00) feet=0,84
+PASS Ground contact at (10.00, 4.00, 5.00) feet=0,84
+PASS Ground contact at (0.00, 4.00, -5.00) feet=0,93
+PASS Avatar feet align with controller, offset=0,000
+PASS Perimeter collision blocks traversal: x=36,74
+PASS Imported sports car blocks or deflects explorer (no straight traversal), x=19,80
+PASS Both playable scenes available
+PASS Unfinished racing portal clearly gated
+PASS Future minigame remains unavailable

@@ -1,0 +1,3 @@
+PASS CarrerasLocas: decorado presente, 38 colisionadores
+PASS CarrerasLocas: sin solapes con pista, rutas o volúmenes de juego
+INFO CarrerasLocas: 2240 triángulos decorativos (mallas de origen, antes del batching estático)

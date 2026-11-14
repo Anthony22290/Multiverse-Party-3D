@@ -1,0 +1,14 @@
+PASS Pista continua collision mesh is watertight
+PASS Pista continua blocks upward travel from underneath (recovery OFF), y=2,93
+PASS Pista continua side wall blocks lateral entry below deck
+PASS Pista continua catches a falling car on top
+PASS Tablero elevado con rampas collision mesh is watertight
+PASS Tablero elevado con rampas blocks upward travel from underneath (recovery OFF), y=1,64
+PASS Tablero elevado con rampas side wall blocks lateral entry below deck
+PASS Tablero elevado con rampas catches a falling car on top
+PASS Automatic recovery from zone 28 preserves lap and checkpoint
+PASS Automatic recovery from zone 82 preserves lap and checkpoint
+PASS Bridge fall automatically recovers without attempting to climb through road
+PASS Outside-map fall returns safely
+PASS Recovery selects free space when checkpoint is occupied
+PASS Expanded circuit spans more than 140 m

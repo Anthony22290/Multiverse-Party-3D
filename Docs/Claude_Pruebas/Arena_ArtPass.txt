@@ -1,0 +1,3 @@
+PASS Arena: decorado del archipiélago creado al construir el mapa
+PASS Arena: el decorado no añade colisionadores (0)
+INFO Arena: 29 piezas, 31 renderers

@@ -1,0 +1,93 @@
+using UnityEngine;
+using UnityEngine.InputSystem;
+
+// Presentation only: no forces, collider changes or race-state mutations.
+public sealed class CrazyKartFeedback : MonoBehaviour
+{
+    CrazyKartController kart;
+    TrailRenderer[] trails = new TrailRenderer[2];
+    LineRenderer ring;
+    Material trailMaterial, ringMaterial;
+    Transform model;
+    Quaternion modelRest;
+    AudioSource engine, effects;
+    AudioClip motorClip, boostClip, hitClip, pickupClip;
+    bool lastBoost, lastStun, muted;
+    int lastItem;
+    Vector3 lastPosition;
+    float observedRecovery=-100,clearTrailsUntil;
+    void Start()
+    {
+        kart=GetComponent<CrazyKartController>();lastPosition=transform.position;
+        if(GetComponent<CrazyKartWheels>()==null)gameObject.AddComponent<CrazyKartWheels>();
+        model=transform.Find("Vehicle_Sports");
+        if(model!=null)modelRest=model.localRotation;
+        trailMaterial=new Material(Shader.Find("Universal Render Pipeline/Unlit"));
+        ringMaterial=new Material(Shader.Find("Universal Render Pipeline/Unlit"));
+        for(int i=0;i<2;i++)
+        {
+            var go=new GameObject("Estela rueda "+i);go.transform.SetParent(transform,false);
+            go.transform.localPosition=new Vector3(i==0?-.65f:.65f,-.24f,-1.1f);
+            var t=go.AddComponent<TrailRenderer>();t.sharedMaterial=trailMaterial;t.time=.32f;
+            t.startWidth=.17f;t.endWidth=.015f;t.minVertexDistance=.08f;t.emitting=false;trails[i]=t;
+        }
+        var shield=new GameObject("Anillo de estado");shield.transform.SetParent(transform,false);
+        ring=shield.AddComponent<LineRenderer>();ring.sharedMaterial=ringMaterial;ring.useWorldSpace=false;
+        ring.loop=true;ring.positionCount=48;ring.startWidth=ring.endWidth=.07f;
+        for(int i=0;i<48;i++){float a=i*Mathf.PI*2/48;ring.SetPosition(i,new Vector3(Mathf.Cos(a)*1.5f,.3f,Mathf.Sin(a)*1.8f));}
+        ring.enabled=false;
+        if(kart.IsHuman)
+        {
+            engine=gameObject.AddComponent<AudioSource>();engine.playOnAwake=false;engine.loop=true;engine.spatialBlend=0;engine.volume=.065f;
+            effects=gameObject.AddComponent<AudioSource>();effects.playOnAwake=false;effects.volume=.16f;
+            motorClip=Tone("Motor original",.5f,90,90,true);boostClip=Tone("Turbo original",.32f,260,900,false);
+            hitClip=Tone("Impacto original",.18f,180,55,false);pickupClip=Tone("Objeto original",.2f,550,1050,false);
+            engine.clip=motorClip;engine.Play();
+        }
+    }
+    static AudioClip Tone(string name,float seconds,float from,float to,bool loop)
+    {
+        const int rate=22050;int count=Mathf.RoundToInt(rate*seconds);var samples=new float[count];float phase=0;
+        for(int i=0;i<count;i++)
+        {
+            float t=(float)i/count;phase+=Mathf.Lerp(from,to,t)*2*Mathf.PI/rate;
+            float envelope=loop?1:Mathf.Sin(t*Mathf.PI);
+            samples[i]=(Mathf.Sin(phase)+.25f*Mathf.Sin(phase*2))*envelope*.4f;
+        }
+        var clip=AudioClip.Create(name,count,1,rate,false);clip.SetData(samples,0);return clip;
+    }
+    void Update()
+    {
+        if(kart==null)return;
+        if((transform.position-lastPosition).sqrMagnitude>36||kart.LastRecoveryTime>observedRecovery)clearTrailsUntil=Time.time+.15f;
+        observedRecovery=kart.LastRecoveryTime;
+        if(Time.time<clearTrailsUntil)foreach(var t in trails)t.Clear();
+        lastPosition=transform.position;
+        Color color=kart.Boosting?new Color(1,.35f,.06f):kart.NitroAmount>=100?new Color(1,.8f,.1f):new Color(.1f,.75f,1);
+        trailMaterial.color=color;
+        foreach(var t in trails)t.emitting=Time.time>=clearTrailsUntil&&!kart.HasFinished&&kart.Speed>5&&(kart.Drifting||kart.Boosting);
+        ring.enabled=kart.Shielded||kart.Stunned;
+        ringMaterial.color=kart.Shielded?Color.cyan:new Color(1,.2f,.3f);
+        ring.transform.localRotation=Quaternion.Euler(0,Time.time*80,0);
+        if(model!=null)model.localRotation=Quaternion.Slerp(model.localRotation,modelRest*Quaternion.Euler(0,kart.Drifting?kart.Steering*8:0,-kart.Steering*Mathf.Clamp01(kart.Speed/12)*3),Time.deltaTime*9);
+        if(engine!=null)
+        {
+            if(Keyboard.current!=null&&Keyboard.current.mKey.wasPressedThisFrame)muted=!muted;
+            engine.mute=effects.mute=muted;
+            engine.pitch=Mathf.Lerp(engine.pitch,.65f+kart.Speed/23,Time.deltaTime*5);
+            engine.volume=kart.HasFinished?.015f:Mathf.Lerp(.035f,.085f,Mathf.Clamp01(kart.Speed/25));
+            if(kart.Boosting&&!lastBoost)effects.PlayOneShot(boostClip);
+            if(kart.Stunned&&!lastStun)effects.PlayOneShot(hitClip);
+            if(kart.HeldItem!=0&&lastItem==0)effects.PlayOneShot(pickupClip);
+        }
+        lastBoost=kart.Boosting;lastStun=kart.Stunned;lastItem=kart.HeldItem;
+    }
+    void OnDestroy()
+    {
+        if(trailMaterial!=null)Destroy(trailMaterial);if(ringMaterial!=null)Destroy(ringMaterial);
+        foreach(var clip in new[]{motorClip,boostClip,hitClip,pickupClip})if(clip!=null)Destroy(clip);
+    }
+}
+
+
+

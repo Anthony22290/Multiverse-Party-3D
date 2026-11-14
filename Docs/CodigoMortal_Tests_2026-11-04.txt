@@ -1,0 +1,23 @@
+PASS Six unique four-digit codes
+PASS Own code cannot be observed
+PASS Terminal reachable at interaction point
+PASS Nearby unobstructed opponent code readable
+PASS Wall blocks code reading
+PASS Code hidden beyond 18 metres
+PASS Protector has one charge
+PASS Protector hides code and rejects elimination
+PASS Wrong code causes five-second lockout
+PASS Correct code rejected during lockout
+PASS Unseen code rejected even if guessed correctly
+PASS Protected attacker cannot eliminate
+PASS Submission rejected away from terminal
+PASS Observed code eliminates target once
+PASS Eliminated target cannot be scored twice
+PASS Character stays below solid bridge when jumping underneath
+PASS Character lands on bridge top
+PASS Boundary wall blocks leaving map
+PASS Recovery returns to valid surface
+PASS Navigation connects all spawns to all terminals: 30/30
+PASS Terminal HUD opens
+PASS Terminal HUD closes
+PASS Last survivor produces winner and results

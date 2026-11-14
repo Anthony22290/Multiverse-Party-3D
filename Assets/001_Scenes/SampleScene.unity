@@ -131,6 +131,7 @@ GameObject:
   - component: {fileID: 330585545}
   - component: {fileID: 330585544}
   - component: {fileID: 330585547}
+  - component: {fileID: 605000000}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -222,8 +223,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a79441f348de89743a2939f4d699eac1, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_RenderShadows: 1
   m_RequiresDepthTextureOption: 2
   m_RequiresOpaqueTextureOption: 2
@@ -364,8 +365,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 474bcb49853aa07438625e644c072ee6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_UsePipelineSettings: 1
   m_AdditionalLightsShadowResolutionTier: 2
   m_CustomShadowLayers: 0
@@ -410,8 +411,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 172515602e62fb746b5d573b38a5fe58, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_IsGlobal: 1
   priority: 0
   blendDistance: 0
@@ -432,63 +433,45 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1001 &1404146044
-PrefabInstance:
+--- !u!114 &605000000
+MonoBehaviour:
   m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 0}
-    m_Modifications:
-    - target: {fileID: -8679921383154817045, guid: 54643d4eb5166634987df452f8048204, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 2.08768
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 54643d4eb5166634987df452f8048204, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 54643d4eb5166634987df452f8048204, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 2.08768
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 54643d4eb5166634987df452f8048204, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 54643d4eb5166634987df452f8048204, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 54643d4eb5166634987df452f8048204, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 54643d4eb5166634987df452f8048204, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 54643d4eb5166634987df452f8048204, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 54643d4eb5166634987df452f8048204, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 54643d4eb5166634987df452f8048204, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 919132149155446097, guid: 54643d4eb5166634987df452f8048204, type: 3}
-      propertyPath: m_Name
-      value: Characters_Anne
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: 54643d4eb5166634987df452f8048204, type: 3}
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 330585543}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 60f6e91fb9bfc8e44a29f496b28f0a09, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  shipLarge: {fileID: 919132149155446097, guid: 6fc804c956e236047bc68c9d348e4b3a, type: 3}
+  sharkModel: {fileID: 919132149155446097, guid: ca43279e2fa9cca46b7140b148d3379f, type: 3}
+  cannonModel: {fileID: 919132149155446097, guid: 97c911b7b8d1ef54aa825db962413864, type: 3}
+  barrelModel: {fileID: 919132149155446097, guid: 4c4ead0b9b259df478a463ec5da2b676, type: 3}
+  bucketModel: {fileID: 919132149155446097, guid: d7106ac6224bf944080fcba5c3332a69, type: 3}
+  anneModel: {fileID: 919132149155446097, guid: 54643d4eb5166634987df452f8048204, type: 3}
+  captainModel: {fileID: 919132149155446097, guid: 634111548a2ff1c449e600e26458b1be, type: 3}
+  henryModel: {fileID: 919132149155446097, guid: 59e80889da3724c488fb04d49abdb49e, type: 3}
+  makoModel: {fileID: 919132149155446097, guid: 46d3e8daf94ab4f4a95e9d878de6648d, type: 3}
+  skeletonModel: {fileID: 919132149155446097, guid: 57c2426c2edc0eb40a6ab8f42e7427ee, type: 3}
+  settings: {fileID: 11400000, guid: 75f541c344035ab880fe8d0883c28b53, type: 2}
+  atlas: {fileID: 2100000, guid: 7ca20d8d649058e4a492c308b5a1c5e7, type: 2}
+  wood: {fileID: 2100000, guid: 96970eaf364e5c3696947288ffb2d598, type: 2}
+  darkWood: {fileID: 2100000, guid: ac4aa69d4ab752b3bc7dec40dc53ef81, type: 2}
+  brass: {fileID: 2100000, guid: 24af10bf09fb51f3b64988266910d71c, type: 2}
+  rope: {fileID: 2100000, guid: 8e6cbe684056511d902aeed6675eb68e, type: 2}
+  cloth: {fileID: 2100000, guid: 5b55049c1a9b5f6fb71fc619995c2f53, type: 2}
+  water: {fileID: 2100000, guid: 66427bbfc1315b6e8be445d465b63fa4, type: 2}
+  foam: {fileID: 2100000, guid: 4ff00050875c508ba163c1fdf34dd8f1, type: 2}
+  warning: {fileID: 2100000, guid: 36c1e8c1034951c3ada143238909d8f1, type: 2}
+  iron: {fileID: 2100000, guid: 7639bb1be32f533e841a5a8ed95ad8ca, type: 2}
+  fighterGrip: {fileID: 13400000, guid: 90daabb7e11859e4ad218b7945623257, type: 2}
+  propGrip: {fileID: 13400000, guid: 6594d59d44f25d8f819a4b886f57ce53, type: 2}
+  rockModel: {fileID: 919132149155446097, guid: 870e3492e4abbf141a841604e8c92685, type: 3}
+  palmModel: {fileID: 919132149155446097, guid: 79f388804c73fc54aa05bd01997d5de4, type: 3}
+  chestModel: {fileID: 919132149155446097, guid: 3051fc6fc7f6cf547a791ff39c23e8cd, type: 3}
+  anchorModel: {fileID: 919132149155446097, guid: a084ed74e2cc96d49914587218285ad3, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -496,4 +479,3 @@ SceneRoots:
   - {fileID: 330585546}
   - {fileID: 410087041}
   - {fileID: 832575519}
-  - {fileID: 1404146044}

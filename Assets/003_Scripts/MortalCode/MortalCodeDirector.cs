@@ -1,0 +1,222 @@
+using System.Collections.Generic;
+using System.Linq;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+
+public sealed class MortalCodeDirector : MonoBehaviour
+{
+    public Transform[] spawnPoints, patrolPoints;
+    public MortalCodeTerminal[] terminals;
+    public Material characterAtlas;
+    public float roundSeconds = 240;
+    public readonly List<MortalCodeActor> Actors = new();
+    readonly Dictionary<MortalCodeActor, string> codes = new();
+    readonly Dictionary<MortalCodeActor, HashSet<MortalCodeActor>> seen = new();
+    public MortalCodeActor Human { get; private set; }
+    public float Remaining { get; private set; }
+    public float Countdown { get; private set; } = 5;
+    public bool Finished { get; private set; }
+    public bool Running => Countdown <= 0 && !Finished;
+    public string Result { get; private set; } = "";
+    public string Notice { get; private set; } = "Lee un código rival y úsalo en una terminal.";
+    float noticeUntil;
+    public int AliveCount => Actors.Count(a => a.Alive);
+    public MortalCodeCamera View { get; private set; }
+    public MortalCodeHUD HUD { get; private set; }
+    /// <summary>Online party match (2026-11-12): shared with the other computers through PartyLink.</summary>
+    public MortalCodeNet Net { get; private set; }
+    public bool IsClient => Net != null && PartyLink.IsClient;
+    float lastNetCountdown = 99;
+    // 2026-11-10: final 30 s sudden death (codes readable from further away), pickups and a kill feed.
+    public bool SuddenDeath => Running && Remaining <= 30;
+    public float ReadRange => SuddenDeath ? 26 : 18;
+    public readonly List<string> Feed = new();
+    float nextPickup = 12; bool alarmed;
+    public IEnumerable<(MortalCodeActor target, string code)> KnownCodes(MortalCodeActor observer)
+    { if (observer != null && seen.TryGetValue(observer, out var set)) foreach (var t in set) yield return (t, codes[t]); }
+    public string CodeOf(MortalCodeActor a) => codes.TryGetValue(a, out var c) ? c : null;
+
+    void Start()
+    {
+        Application.runInBackground = true;
+        Remaining = roundSeconds;
+        string[] names = { "Tú", "Coral", "Menta", "Rayo", "Lila", "Ámbar" };
+        string[] models = { "Anne", "Henry", "Mako", "Captain_Barbarossa", "Anne", "Henry" };
+        Color[] colors = { Color.cyan, new(1,.3f,.4f), new(.3f,1,.6f), Color.yellow, new(.8f,.4f,1), new(1,.6f,.2f) };
+        var used = new HashSet<string>();
+        // The party chooses who plays (4–6). Slot 0 is this computer's player.
+        var roster = MultiverseParty.CurrentRoster();
+        names = roster.Names; colors = roster.Colors;
+        if (MultiverseParty.InMatch) models = roster.Characters.Select(PartyGames.ModelName).ToArray();
+        int count = Mathf.Min(spawnPoints.Length, Mathf.Max(2, roster.Count));
+        for (int i = 0; i < count; i++)
+        {
+            var go = new GameObject(names[i % names.Length]);
+            int spot = PartyLink.Active ? Mathf.Max(0, PartyLink.MemberOfSlot(i)) % spawnPoints.Length : i;   // online: same spot for each player on every computer
+            go.transform.SetPositionAndRotation(spawnPoints[spot].position, spawnPoints[spot].rotation);
+            var actor = go.AddComponent<MortalCodeActor>();
+            Actors.Add(actor); seen[actor] = new();
+            string code; do code = Random.Range(0,10000).ToString("D4"); while (!used.Add(code));
+            codes[actor] = code;
+            actor.Initialize(this, i == 0, names[i % names.Length], models[i % models.Length], colors[i % colors.Length], PartyLink.IsPuppet(i));
+            if (i == 0) Human = actor;
+        }
+        var camera = Camera.main;
+        if (camera == null) { var c = new GameObject("Main Camera", typeof(Camera), typeof(AudioListener)); c.tag = "MainCamera"; camera = c.GetComponent<Camera>(); }
+        View = camera.gameObject.AddComponent<MortalCodeCamera>(); View.Director = this;
+        HUD = gameObject.AddComponent<MortalCodeHUD>(); HUD.Director = this;
+        gameObject.AddComponent<MortalCodeAudio>();
+        foreach (var t in terminals) if (t != null && t.GetComponent<MortalCodeTerminalFX>() == null) t.gameObject.AddComponent<MortalCodeTerminalFX>();
+        if (PartyLink.Active) { Net = gameObject.AddComponent<MortalCodeNet>(); Net.Init(this); }
+    }
+    void Update()
+    {
+        if (IsClient) { if (Time.time > noticeUntil) Notice = ""; return; }   // the host simulates the round
+        if (Finished) return;
+        if (Countdown > 0)
+        {
+            if (Net != null && !PartyLink.AllReady) { Notice = PartyLink.WaitingText; return; }
+            float before = Countdown; Countdown -= Time.deltaTime;
+            if (Mathf.CeilToInt(before) != Mathf.CeilToInt(Countdown) && Countdown > 0 && Countdown <= 3) MortalCodeAudio.UI("beep");
+            if (Countdown <= 0) MortalCodeAudio.UI("go");
+            return;
+        }
+        Remaining = Mathf.Max(0, Remaining - Time.deltaTime);
+        if (!alarmed && Remaining <= 30 && AliveCount > 1) { alarmed = true; MortalCodeAudio.UI("alarm", .8f); MortalCodeAudio.Tension(true); Notify("¡MUERTE SÚBITA! Los códigos se leen desde más lejos"); }
+        if (Remaining <= roundSeconds - nextPickup) { nextPickup += 20; SpawnPickup(); }
+        if (AliveCount <= 1) Finish(AliveCount == 1 ? "GANA " + Actors.First(a => a.Alive).DisplayName.ToUpperInvariant() : "SIN SUPERVIVIENTES");
+        else if (Remaining <= 0) Finish("EMPATE · " + AliveCount + " SUPERVIVIENTES");
+        if (Time.time > noticeUntil) Notice = "";
+    }
+    void Finish(string text)
+    {
+        Finished = true; Result = text; HUD?.CloseTerminal();
+        // Party point: the last pirate standing; on a timeout, the survivor with the most eliminations (if unique).
+        var alive = Actors.Where(a => a.Alive).ToList();
+        MortalCodeActor winner = alive.Count == 1 ? alive[0] : null;
+        if (winner == null && alive.Count > 1)
+        {
+            var best = alive.OrderByDescending(a => a.Eliminations).ToList();
+            if (best[0].Eliminations > best[1].Eliminations) { winner = best[0]; Result += "\n" + winner.DisplayName.ToUpperInvariant() + " SE LLEVA EL PUNTO (MÁS ELIMINACIONES)"; }
+        }
+        PartyLink.Finish(winner != null ? Actors.IndexOf(winner) : -1);
+        MortalCodeAudio.FadeMusic(); MortalCodeAudio.Tension(false);
+        MortalCodeAudio.UI(Human != null && Human.Alive && AliveCount == 1 ? "win" : "lose");
+    }
+    void SpawnPickup()
+    {
+        if (patrolPoints == null || patrolPoints.Length == 0 || FindObjectsByType<MortalCodePickup>(FindObjectsSortMode.None).Length >= 3) return;
+        var at = patrolPoints[Random.Range(0, patrolPoints.Length)].position;
+        if (UnityEngine.AI.NavMesh.SamplePosition(at, out var hit, 3, UnityEngine.AI.NavMesh.AllAreas)) at = hit.position;
+        MortalCodePickup.Create(this, Random.value < .55f ? MortalCodePickup.Kind.Scanner : MortalCodePickup.Kind.Speed, at);
+    }
+    public void OnPickup(MortalCodeActor a, MortalCodePickup p)
+    {
+        MortalCodeAudio.At("pickup", p.transform.position, .9f);
+        MultiverseFX.Burst(p.transform.position + Vector3.up, p.kind == MortalCodePickup.Kind.Scanner ? new Color(.3f, 1, .9f) : new Color(1, .75f, .2f), 22, 6);
+        if (p.kind == MortalCodePickup.Kind.Speed) { a.Boost(6); Tell(a, "TURBO · 6 s de velocidad", "speed"); return; }
+        // Scanner: nearest living, unprotected rival whose code this actor does not know yet.
+        var target = Actors.Where(o => o != a && o.Alive && !o.Protected && !seen[a].Contains(o)).OrderBy(o => (o.transform.position - a.transform.position).sqrMagnitude).FirstOrDefault();
+        if (target == null) { Tell(a, "ESCÁNER · no queda ningún código por descubrir"); return; }
+        seen[a].Add(target);
+        a.GetComponent<MortalCodeBot>()?.Learn(target, codes[target]);
+        Tell(a, "ESCÁNER · código de " + target.DisplayName + ": " + codes[target], "scan");
+        if (a.IsHuman) HUD?.Flash(target); else if (Net != null && a.Puppet) Net.SendFlash(a, target);
+    }
+    public void Notify(string text) { Notice = text; noticeUntil = Time.time + 4; }
+
+    public bool CanRead(MortalCodeActor observer, MortalCodeActor target)
+    {
+        if (!Running || observer == null || target == null || observer == target || !observer.Alive || !target.Alive || target.Protected) return false;
+        Vector3 delta = target.Eye - observer.Eye;
+        if (delta.sqrMagnitude > ReadRange*ReadRange) return false;
+        Vector3 forward = observer.IsHuman && View != null ? View.transform.forward : observer.transform.forward;
+        if (Vector3.Dot(forward, delta.normalized) < .35f) return false;
+        if(observer.IsHuman && View!=null)
+        {
+            var ray=target.Eye-View.transform.position;
+            foreach(var viewHit in Physics.RaycastAll(View.transform.position,ray.normalized,ray.magnitude,~0,QueryTriggerInteraction.Ignore))
+                if(!viewHit.transform.IsChildOf(target.transform) && !viewHit.transform.IsChildOf(observer.transform))return false;
+        }
+        return !Physics.Linecast(observer.Eye, target.Eye, out var hit, ~0, QueryTriggerInteraction.Ignore) || hit.transform.IsChildOf(target.transform);
+    }
+    public string Observe(MortalCodeActor observer, MortalCodeActor target)
+    {
+        if (!CanRead(observer, target)) return null;
+        if (seen[observer].Add(target) && observer.IsHuman)
+        {
+            if (IsClient) Net.RequestObserve(target);   // first time the player reads this code: ping + note in the notebook
+            MortalCodeAudio.UI("ping", .8f); HUD?.Flash(target);
+            MultiverseFX.FloatText(target.Eye + Vector3.up * 1.3f, "ANOTADO", new Color(.35f, 1, .86f), .8f);
+        }
+        return codes[target];
+    }
+    public MortalCodeTerminal NearestTerminal(Vector3 position) => terminals.OrderBy(t => (t.UsePoint-position).sqrMagnitude).FirstOrDefault();
+    public bool CanUse(MortalCodeActor actor, MortalCodeTerminal terminal)
+    {
+        if (!Running || actor == null || !actor.Alive || terminal == null || !terminals.Contains(terminal)) return false;
+        if (Vector3.Distance(actor.transform.position, terminal.UsePoint) > 3) return false;
+        return !Physics.Linecast(actor.Eye, terminal.UsePoint+Vector3.up*1.2f, ~0, QueryTriggerInteraction.Ignore);
+    }
+    public bool Submit(MortalCodeActor actor, MortalCodeTerminal terminal, string code, out string message)
+    {
+        message = "Acércate a una terminal.";
+        if (!CanUse(actor, terminal)) return false;
+        if (IsClient && actor == Human) { Net.RequestSubmit(System.Array.IndexOf(terminals, terminal), code); message = "Comprobando…"; return false; }
+        if (actor.Protected) { message = "El protector activo impide eliminar."; return false; }
+        if (Time.time < actor.LockedUntil) { message = "Terminal bloqueada por error. Espera."; return false; }
+        var target = Actors.FirstOrDefault(a => a != actor && a.Alive && codes[a] == code);
+        if (target == null || !seen[actor].Contains(target))
+        { actor.LockedUntil = Time.time + 5; message = "Código incorrecto o no observado · bloqueo 5 s"; if (actor.IsHuman) MortalCodeAudio.UI("denied"); else MortalCodeAudio.At("denied", terminal.UsePoint, .5f); terminal.GetComponent<MortalCodeTerminalFX>()?.Pulse(false); return false; }
+        if (target.Protected) { message = "Objetivo protegido. Inténtalo después."; actor.LockedUntil = Time.time + 2; if (actor.IsHuman) MortalCodeAudio.UI("denied", .6f); return false; }
+        target.Eliminate(); actor.Eliminations++;
+        message = "Eliminado: " + target.DisplayName;
+        Notify(actor.DisplayName + " eliminó a " + target.DisplayName);
+        if (Net != null) Net.SendNotice(null, actor.DisplayName + " eliminó a " + target.DisplayName);
+        Feed.Insert(0, actor.DisplayName + "  ›  " + target.DisplayName); if (Feed.Count > 4) Feed.RemoveAt(4);
+        terminal.GetComponent<MortalCodeTerminalFX>()?.Pulse(true);
+        if (actor.IsHuman) MortalCodeAudio.UI("access");
+        MortalCodeAudio.At("eliminated", target.transform.position, 1);
+        if (target.IsHuman) MortalCodeAudio.UI("eliminated");
+        View?.Shake(target.IsHuman ? .6f : Vector3.Distance(target.transform.position, Human.transform.position) < 20 ? .25f : 0);
+        return true;
+    }
+    // Ranking for the results screen: survivors first, then by eliminations.
+    public string Ranking => string.Join("\n", Actors.OrderByDescending(a => a.Alive).ThenByDescending(a => a.Eliminations)
+        .Select((a, i) => (i + 1) + ". " + a.DisplayName + (a.Alive ? "  · vivo" : "") + "   " + a.Eliminations + " elim."));
+    // ---------------------------------------------------------------- online (2026-11-12)
+    /// <summary>A notice for the player of this actor (here, or on their computer when they play online).</summary>
+    public void Tell(MortalCodeActor a, string text, string sound = null)
+    {
+        if (a == null) return;
+        if (a.IsHuman) { Notify(text); if (!string.IsNullOrEmpty(sound)) MortalCodeAudio.UI(sound); }
+        else if (Net != null && a.Puppet) Net.SendNotice(a, text, sound ?? "");
+    }
+    public void SetCode(MortalCodeActor a, string code) { if (a != null && !string.IsNullOrEmpty(code)) codes[a] = code; }
+    public void MarkSeen(MortalCodeActor observer, MortalCodeActor target)
+    {
+        if (observer == null || target == null || observer == target || !seen.ContainsKey(observer)) return;
+        if (seen[observer].Add(target) && observer.IsHuman) { MortalCodeAudio.UI("ping", .8f); HUD?.Flash(target); }
+    }
+    /// <summary>Client: round state from the host.</summary>
+    public void ApplyNet(float countdown, float remaining, bool finished, string result)
+    {
+        if (countdown > 0 && Mathf.CeilToInt(lastNetCountdown) != Mathf.CeilToInt(countdown) && countdown <= 3) MortalCodeAudio.UI("beep");
+        if (lastNetCountdown > 0 && countdown <= 0 && !finished) MortalCodeAudio.UI("go");
+
+        lastNetCountdown = countdown;
+        Countdown = countdown; Remaining = remaining;
+        if (!alarmed && countdown <= 0 && remaining <= 30 && AliveCount > 1 && !finished) { alarmed = true; MortalCodeAudio.UI("alarm", .8f); MortalCodeAudio.Tension(true); Notify("¡MUERTE SÚBITA! Los códigos se leen desde más lejos"); }
+        if (finished && !Finished)
+        {
+            Finished = true; Result = result; HUD?.CloseTerminal();
+            PartyLink.Finish(-1);
+            MortalCodeAudio.FadeMusic(); MortalCodeAudio.Tension(false);
+            MortalCodeAudio.UI(Human != null && Human.Alive && AliveCount == 1 ? "win" : "lose");
+        }
+        else if (finished) Result = result;
+    }
+
+    public void Restart() { if (!MultiverseParty.InMatch) SceneManager.LoadScene("CodigoMortal"); }
+    public void ReturnToHub() { if (!MultiverseParty.InMatch) SceneManager.LoadScene("MundoDeInicio"); }
+}

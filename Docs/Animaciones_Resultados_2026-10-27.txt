@@ -1,0 +1,42 @@
+PASS Player - Anne Animator ready
+PASS Player - Anne skin bones
+PASS Player - Anne unarmed
+PASS Bot - Pirate 1 Animator ready
+PASS Bot - Pirate 1 skin bones
+PASS Bot - Pirate 1 unarmed
+PASS Bot - Pirate 2 Animator ready
+PASS Bot - Pirate 2 skin bones
+PASS Bot - Pirate 2 unarmed
+PASS Bot - Pirate 3 Animator ready
+PASS Bot - Pirate 3 skin bones
+PASS Bot - Pirate 3 unarmed
+PASS Bot - Pirate 4 Animator ready
+PASS Bot - Pirate 4 skin bones
+PASS Bot - Pirate 4 unarmed
+PASS Bot - Pirate 5 Animator ready
+PASS Bot - Pirate 5 skin bones
+PASS Bot - Pirate 5 unarmed
+PASS Player loop advances
+PASS Feet on deck
+PASS Idle at rest
+PASS Walking follows speed (actual Walk, speed 1,873305, keyboard True, key True)
+PASS Walk moves leg bones
+PASS Running follows speed
+PASS Jump impulse and animation
+PASS Airborne fall pose
+PASS Lands back on deck
+PASS Two-hand push and target impulse
+PASS Grab creates ownership
+PASS Carry and captive struggle poses
+PASS Lift raises captive and hands (pose Lift, initial 0,04982328, current 0,9081631, held True, shift True, rotation (359.93, 359.83, 0.06), anchor (0.00, 0.78, 0.35))
+PASS Throw releases captive with velocity
+PASS Object grab uses carry pose
+PASS Object lift
+PASS Object throw
+PASS Ledge grip and hanging pose
+PASS Climb releases ledge and jumps
+PASS Hit reaction during stun
+PASS Recovery after stun
+PASS Elimination animation
+PASS Respawn clears animation and grabs
+PASS Winner celebrates

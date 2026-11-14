@@ -1,0 +1,125 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0cc63c859438e6a4ab6cbade246a90c0, type: 3}
+  m_Name: EscapeArtSet
+  m_EditorClassIdentifier: Assembly-CSharp::EscapeArtSet
+  props:
+  - key: Maceta
+    prefab: {fileID: 537034004375206384, guid: af12800b72b4ace45a2b0c4fd4b0107e, type: 3}
+  - key: Jardinera
+    prefab: {fileID: 6078364197110963995, guid: 90e8604f8923bd34d8bf4b4d9b5d1c96, type: 3}
+  - key: Arbusto
+    prefab: {fileID: 4854146768119690939, guid: 09f5d479a4b41774aa6767043f7452d6, type: 3}
+  - key: Banco
+    prefab: {fileID: 7357929220830671294, guid: 27cfb6b0e3116284ab01693ca2e99f58, type: 3}
+  - key: Cajas
+    prefab: {fileID: 8372363464709965494, guid: 506f98bd8cd836743b8bb5ce88509702, type: 3}
+  - key: Guirnalda
+    prefab: {fileID: 2175168924415807119, guid: 2036e201019fc4745a188f09f5ad82d0, type: 3}
+  - key: Poste indicador
+    prefab: {fileID: 1246860338737017094, guid: 94d0eeff101a2ac4d9688c9da65879de, type: 3}
+  - key: Farola
+    prefab: {fileID: 1705603466858359743, guid: b861978df6514c542803073585cdb082, type: 3}
+  - key: Tesoro
+    prefab: {fileID: 564719619807807110, guid: 225dd7644e19cc5448ebf1780a25f55e, type: 3}
+  - key: Antorcha tiki
+    prefab: {fileID: 2696006895775858841, guid: 21e4b65dd8876aa40a148f41f6dff0af, type: 3}
+  paints:
+  - key: Agua
+    material: {fileID: 2100000, guid: e81912cf5a1fcfe4dbed16c6875d68c9, type: 2}
+  - key: Azul noche
+    material: {fileID: 2100000, guid: e6eab65e0e38dca48be526858a236989, type: 2}
+  - key: Bandera negra
+    material: {fileID: 2100000, guid: 13fc797eab60d37459765890bce0bb6c, type: 2}
+  - key: Blanco
+    material: {fileID: 2100000, guid: 92acd435cb8d2344e9f50f3078cd8b71, type: 2}
+  - key: Coral
+    material: {fileID: 2100000, guid: 16b67b7c6b1e5764991982afe726ec53, type: 2}
+  - key: Crema
+    material: {fileID: 2100000, guid: 798c41a77543c2b4da20311d6c3adc36, type: 2}
+  - key: Cristal
+    material: {fileID: 2100000, guid: 9589081b96bdea64299cf9f61d963b8b, type: 2}
+  - key: Dorado
+    material: {fileID: 2100000, guid: ee513216b8e3b5c4eb27b71771172fda, type: 2}
+  - key: Flor amarilla
+    material: {fileID: 2100000, guid: 2fbe21aeea69f6b429a27c539da7918a, type: 2}
+  - key: Flor rosa
+    material: {fileID: 2100000, guid: 0846c3eb46f12b1478f3e525e5719797, type: 2}
+  - key: Fuego
+    material: {fileID: 2100000, guid: f80ac16cd325f1b4b9d04eae84eee414, type: 2}
+  - key: Goma
+    material: {fileID: 2100000, guid: f1f05b676de7cb2459a09b8f244fe76c, type: 2}
+  - key: Hierro
+    material: {fileID: 2100000, guid: 1e817a2bc4130934aac36b5fe46096dd, type: 2}
+  - key: Hoja oscura
+    material: {fileID: 2100000, guid: 1ec8877608e7f6d4892e220a1362f7ba, type: 2}
+  - key: Hoja
+    material: {fileID: 2100000, guid: 27aaebca1bc54f649a2739fbace76652, type: 2}
+  - key: "Hormig\xF3n"
+    material: {fileID: 2100000, guid: 0fdbf0b93ba354d428c0daf95884f331, type: 2}
+  - key: Hueso
+    material: {fileID: 2100000, guid: 4676648cad25a4a4db7b3c4a0b568b73, type: 2}
+  - key: "Luz c\xE1lida"
+    material: {fileID: 2100000, guid: 5fa69a7f0abfabb4bad89f74c6048132, type: 2}
+  - key: Madera clara
+    material: {fileID: 2100000, guid: f8c8cbbf687808f41ad9388ae7731c09, type: 2}
+  - key: Madera oscura
+    material: {fileID: 2100000, guid: 1e8c4c88156f475498048b8c5b33c8ea, type: 2}
+  - key: Marfil
+    material: {fileID: 2100000, guid: ced9a88687712aa448ee4e103ca7ba7f, type: 2}
+  - key: Menta
+    material: {fileID: 2100000, guid: 9c0802b870e9d024bb4d79a78c8580ce, type: 2}
+  - key: Negro suave
+    material: {fileID: 2100000, guid: 2c2ef3cf4a756204392396e9a4a6c1d3, type: 2}
+  - key: "Ne\xF3n cian"
+    material: {fileID: 2100000, guid: 27dc936dfa270a244beb4cd38da03bfd, type: 2}
+  - key: "Ne\xF3n rosa"
+    material: {fileID: 2100000, guid: 92ed02d728ea14d4f91d9f817a1a15ca, type: 2}
+  - key: "Ne\xF3n \xE1mbar"
+    material: {fileID: 2100000, guid: 11a77e4561eae534eb613a74cdd493de, type: 2}
+  - key: Paja
+    material: {fileID: 2100000, guid: cecc0d34f54f0634e94b7a6fcdf19445, type: 2}
+  - key: Piedra oscura
+    material: {fileID: 2100000, guid: 32c9322706af18447aa6e6289fa3340e, type: 2}
+  - key: Piedra
+    material: {fileID: 2100000, guid: 21d4bc5aebef14e419c9752b498dfa8e, type: 2}
+  - key: Tejado azul
+    material: {fileID: 2100000, guid: 66aa078eb64521b4d96592b864547c8b, type: 2}
+  - key: Tejado rojo
+    material: {fileID: 2100000, guid: 495a92be5aaa00847b2903cf7169b59c, type: 2}
+  - key: Tejado turquesa
+    material: {fileID: 2100000, guid: 88d5c4f29bbb9e748b97571d90010973, type: 2}
+  - key: Tela amarilla
+    material: {fileID: 2100000, guid: e093794fada069f4490a04ebbe2839d8, type: 2}
+  - key: Tela morada
+    material: {fileID: 2100000, guid: 05315ece7b4602e44a971bf06ba2c3e4, type: 2}
+  - key: Tela roja
+    material: {fileID: 2100000, guid: 98023672696b88f4fad05758725dafbe, type: 2}
+  - key: Tela rosa
+    material: {fileID: 2100000, guid: f8fd60a351a416d469764cff8fb4edb1, type: 2}
+  - key: Tela turquesa
+    material: {fileID: 2100000, guid: 8a97bc77b651a8e458eb23cfa65094c2, type: 2}
+  - key: Tela verde
+    material: {fileID: 2100000, guid: 30fc24d55303495438a0467bed6a236f, type: 2}
+  - key: Tierra
+    material: {fileID: 2100000, guid: 0c5a434c45f5e714a81447dfa9bb14c3, type: 2}
+  - key: Tronco
+    material: {fileID: 2100000, guid: 6c96355b8634eeb43acf563a9da082e8, type: 2}
+  - key: "Ventana c\xE1lida"
+    material: {fileID: 2100000, guid: f35d28ea161524d499cab1075fb1acbe, type: 2}
+  - key: Ventana noche
+    material: {fileID: 2100000, guid: 8997c2b51d7a5d343a2ddf4b3ad97bdd, type: 2}
+  - key: "\xC1mbar"
+    material: {fileID: 2100000, guid: b96e8e65983aee14aa8b6d506fe80953, type: 2}
+  font: {fileID: 12800000, guid: 6d9ffb4e6185638429a5d925046358cf, type: 3}
+  textMaterial: {fileID: 2100000, guid: d6713e493ce098c479e92d1fde8a10bb, type: 2}
+  characterAtlas: {fileID: 2100000, guid: 7ca20d8d649058e4a492c308b5a1c5e7, type: 2}

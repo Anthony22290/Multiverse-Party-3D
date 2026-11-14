@@ -1,0 +1,7 @@
+PASS W moves real controller
+PASS E opens terminal
+PASS Keyboard text fills four-digit terminal
+PASS Backspace removes last digit
+PASS Escape closes terminal
+PASS Q activates protector once
+PASS Escape opens menu

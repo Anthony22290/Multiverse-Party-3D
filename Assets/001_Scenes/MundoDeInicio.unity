@@ -1,0 +1,219 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!29 &1
+OcclusionCullingSettings:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_OcclusionBakeSettings:
+    smallestOccluder: 5
+    smallestHole: 0.25
+    backfaceThreshold: 100
+  m_SceneGUID: 00000000000000000000000000000000
+  m_OcclusionCullingData: {fileID: 0}
+--- !u!104 &2
+RenderSettings:
+  m_ObjectHideFlags: 0
+  serializedVersion: 10
+  m_Fog: 1
+  m_FogColor: {r: 0.34, g: 0.67, b: 0.76, a: 1}
+  m_FogMode: 1
+  m_FogDensity: 0.01
+  m_LinearFogStart: 100
+  m_LinearFogEnd: 220
+  m_AmbientSkyColor: {r: 0.72, g: 0.76, b: 0.75, a: 1}
+  m_AmbientEquatorColor: {r: 0.114, g: 0.125, b: 0.133, a: 1}
+  m_AmbientGroundColor: {r: 0.047, g: 0.043, b: 0.035, a: 1}
+  m_AmbientIntensity: 1
+  m_AmbientMode: 0
+  m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
+  m_SkyboxMaterial: {fileID: 10304, guid: 0000000000000000f000000000000000, type: 0}
+  m_HaloStrength: 0.5
+  m_FlareStrength: 1
+  m_FlareFadeSpeed: 3
+  m_HaloTexture: {fileID: 0}
+  m_SpotCookie: {fileID: 10001, guid: 0000000000000000e000000000000000, type: 0}
+  m_DefaultReflectionMode: 0
+  m_DefaultReflectionResolution: 128
+  m_ReflectionBounces: 1
+  m_ReflectionIntensity: 1
+  m_CustomReflection: {fileID: 0}
+  m_Sun: {fileID: 0}
+  m_UseRadianceAmbientProbe: 0
+--- !u!157 &3
+LightmapSettings:
+  m_ObjectHideFlags: 0
+  serializedVersion: 13
+  m_BakeOnSceneLoad: 0
+  m_GISettings:
+    serializedVersion: 2
+    m_BounceScale: 1
+    m_IndirectOutputScale: 1
+    m_AlbedoBoost: 1
+    m_EnvironmentLightingMode: 0
+    m_EnableBakedLightmaps: 1
+    m_EnableRealtimeLightmaps: 0
+  m_LightmapEditorSettings:
+    serializedVersion: 12
+    m_Resolution: 2
+    m_BakeResolution: 40
+    m_AtlasSize: 1024
+    m_AO: 0
+    m_AOMaxDistance: 1
+    m_CompAOExponent: 1
+    m_CompAOExponentDirect: 0
+    m_ExtractAmbientOcclusion: 0
+    m_Padding: 2
+    m_LightmapParameters: {fileID: 0}
+    m_LightmapsBakeMode: 1
+    m_TextureCompression: 1
+    m_ReflectionCompression: 2
+    m_MixedBakeMode: 2
+    m_BakeBackend: 2
+    m_PVRSampling: 1
+    m_PVRDirectSampleCount: 32
+    m_PVRSampleCount: 512
+    m_PVRBounces: 2
+    m_PVREnvironmentSampleCount: 256
+    m_PVREnvironmentReferencePointCount: 2048
+    m_PVRFilteringMode: 1
+    m_PVRDenoiserTypeDirect: 1
+    m_PVRDenoiserTypeIndirect: 1
+    m_PVRDenoiserTypeAO: 1
+    m_PVRFilterTypeDirect: 0
+    m_PVRFilterTypeIndirect: 0
+    m_PVRFilterTypeAO: 0
+    m_PVREnvironmentMIS: 1
+    m_PVRCulling: 1
+    m_PVRFilteringGaussRadiusDirect: 1
+    m_PVRFilteringGaussRadiusIndirect: 1
+    m_PVRFilteringGaussRadiusAO: 1
+    m_PVRFilteringAtrousPositionSigmaDirect: 0.5
+    m_PVRFilteringAtrousPositionSigmaIndirect: 2
+    m_PVRFilteringAtrousPositionSigmaAO: 1
+    m_ExportTrainingData: 0
+    m_TrainingDataDestination: TrainingData
+    m_LightProbeSampleCountMultiplier: 4
+  m_LightingDataAsset: {fileID: 20201, guid: 0000000000000000f000000000000000, type: 0}
+  m_LightingSettings: {fileID: 0}
+--- !u!196 &4
+NavMeshSettings:
+  serializedVersion: 2
+  m_ObjectHideFlags: 0
+  m_BuildSettings:
+    serializedVersion: 3
+    agentTypeID: 0
+    agentRadius: 0.5
+    agentHeight: 2
+    agentSlope: 45
+    agentClimb: 0.4
+    ledgeDropHeight: 0
+    maxJumpAcrossDistance: 0
+    minRegionArea: 2
+    manualCellSize: 0
+    cellSize: 0.16666667
+    manualTileSize: 0
+    tileSize: 256
+    buildHeightMesh: 0
+    maxJobWorkers: 0
+    preserveTilesOutsideBounds: 0
+    debug:
+      m_Flags: 0
+  m_NavMeshData: {fileID: 0}
+--- !u!1 &561268849
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 561268851}
+  - component: {fileID: 561268850}
+  m_Layer: 0
+  m_Name: MULTIVERSE PARTY 3D - Mundo de inicio
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &561268850
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 561268849}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6f27b873d7a1b2543b2c270c70aca750, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MultiverseHub
+  pirate: {fileID: 919132149155446097, guid: 54643d4eb5166634987df452f8048204, type: 3}
+  ship: {fileID: 919132149155446097, guid: 6fc804c956e236047bc68c9d348e4b3a, type: 3}
+  shark: {fileID: 919132149155446097, guid: ca43279e2fa9cca46b7140b148d3379f, type: 3}
+  barrel: {fileID: 919132149155446097, guid: 4c4ead0b9b259df478a463ec5da2b676, type: 3}
+  chest: {fileID: 919132149155446097, guid: 3051fc6fc7f6cf547a791ff39c23e8cd, type: 3}
+  palm: {fileID: 919132149155446097, guid: 79f388804c73fc54aa05bd01997d5de4, type: 3}
+  rock: {fileID: 919132149155446097, guid: 870e3492e4abbf141a841604e8c92685, type: 3}
+  zombie: {fileID: 919132149155446097, guid: b604b1090907132478f53ff167c1654d, type: 3}
+  monster: {fileID: 919132149155446097, guid: 75b619ab7192a8545a0fb753001c7ef8, type: 3}
+  wood: {fileID: 2100000, guid: 96970eaf364e5c3696947288ffb2d598, type: 2}
+  darkWood: {fileID: 2100000, guid: ac4aa69d4ab752b3bc7dec40dc53ef81, type: 2}
+  brass: {fileID: 2100000, guid: 24af10bf09fb51f3b64988266910d71c, type: 2}
+  rope: {fileID: 2100000, guid: 8e6cbe684056511d902aeed6675eb68e, type: 2}
+  cloth: {fileID: 2100000, guid: 5b55049c1a9b5f6fb71fc619995c2f53, type: 2}
+  foam: {fileID: 2100000, guid: 4ff00050875c508ba163c1fdf34dd8f1, type: 2}
+  iron: {fileID: 2100000, guid: 7639bb1be32f533e841a5a8ed95ad8ca, type: 2}
+  water: {fileID: 2100000, guid: 66427bbfc1315b6e8be445d465b63fa4, type: 2}
+  atlas: {fileID: 2100000, guid: 7ca20d8d649058e4a492c308b5a1c5e7, type: 2}
+  zombieAtlas: {fileID: 2100000, guid: ae836b73a84a9304bae1369a2406f482, type: 2}
+  monsterAtlas: {fileID: 2100000, guid: 4ba74c260fcb4824680e9e06f9d6a643, type: 2}
+  houses:
+  - {fileID: 3180126862979033114, guid: 8af9bd59197d1dd4b840efe25bbe4f20, type: 3}
+  - {fileID: 1283158605638352552, guid: 36f68032b7933144c9abeb276151a540, type: 3}
+  - {fileID: 6775980215420878404, guid: 8acd0b0556dcba44295ac9381935b027, type: 3}
+  flags:
+  - {fileID: 2702301221170553166, guid: a06153f33a862674c8ec86ad1a00e22b, type: 3}
+  - {fileID: 4721401416682826162, guid: bba4e0e4d1db1854abb48c3558770c21, type: 3}
+  - {fileID: 6927582758412947516, guid: 7abd604031f663f41ba41be44b8b2f62, type: 3}
+  - {fileID: 8984122401532536725, guid: cffb47f18331452469c643f86be99200, type: 3}
+  - {fileID: 2471496999207393103, guid: def4dd776015781478078e35e832b9da, type: 3}
+  - {fileID: 4079096242208309137, guid: f0abdb4be0259b044b60091e6284b079, type: 3}
+  banners:
+  - {fileID: 5616951730498011722, guid: 546f09438f56aea4ba81b005b4fcbe56, type: 3}
+  - {fileID: 8162879839165283440, guid: 3a19840dc7c896449b4db645821e1849, type: 3}
+  - {fileID: 4743557369965606420, guid: 87d92ebcac3ea1f4fb2f4c0afb4e510a, type: 3}
+  - {fileID: 2034456552647444281, guid: 2ce5525263b8f8544beecc4a6733bec0, type: 3}
+  - {fileID: 2721796248852652713, guid: 398cc2d38260b7742959a64893ea8ba8, type: 3}
+  fountain: {fileID: 5249324925928892188, guid: d8083d70ccf56fd4da1b7e76792030a5, type: 3}
+  lighthouse: {fileID: 4281194383255010872, guid: 4823d3062b5ac6046a0351e53333f5b8, type: 3}
+  kiosk: {fileID: 6633485178150206767, guid: c2c80df574af58446b6a5e489a7dce6d, type: 3}
+  lamp: {fileID: 1705603466858359743, guid: b861978df6514c542803073585cdb082, type: 3}
+  garland: {fileID: 2175168924415807119, guid: 2036e201019fc4745a188f09f5ad82d0, type: 3}
+  bench: {fileID: 7357929220830671294, guid: 27cfb6b0e3116284ab01693ca2e99f58, type: 3}
+  tree: {fileID: 3880054748617207425, guid: 195c486a2b1808b469d90993aaa65b43, type: 3}
+  pine: {fileID: 7069617691883670861, guid: 595e9f4b10f2bd94faa5e7cd73a8b36a, type: 3}
+  bush: {fileID: 4854146768119690939, guid: 09f5d479a4b41774aa6767043f7452d6, type: 3}
+  planter: {fileID: 6078364197110963995, guid: 90e8604f8923bd34d8bf4b4d9b5d1c96, type: 3}
+  cloud: {fileID: 4923356722155637932, guid: 3120abdb4ffc9db44b3da7fdff6f3e2a, type: 3}
+  signpost: {fileID: 1246860338737017094, guid: 94d0eeff101a2ac4d9688c9da65879de, type: 3}
+--- !u!4 &561268851
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 561268849}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1660057539 &9223372036854775807
+SceneRoots:
+  m_ObjectHideFlags: 0
+  m_Roots:
+  - {fileID: 561268851}

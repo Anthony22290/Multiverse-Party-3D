@@ -1,0 +1,18 @@
+PASS Saved scene registers one human and three bots
+PASS 32 ordered checkpoints persisted
+PASS Countdown blocks acceleration
+PASS W accelerates with bounded speed: 21,95 position=(19.69, 0.44, 57.95) stunned=False key=True device=18/18
+PASS S brakes: 8,08
+PASS SHIFT steering charges drift and release gives mini turbo, charge=52
+PASS Space consumes held shield
+PASS Shield absorbs one impact
+PASS Unshielded impact temporarily slows kart
+PASS Turbo object activates
+PASS Pulse spawns
+PASS Trap spawns
+PASS Skipped checkpoints cannot add laps
+PASS Backward gate cannot advance
+PASS Falling recovers to last valid checkpoint
+PASS Continuous road floor 32/32
+PASS Item pickup reserves one slot and hides box
+PASS Item box respawns
