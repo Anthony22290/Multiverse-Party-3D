@@ -1,0 +1,21 @@
+PASS Solo tu explorador en la torre (1 cuerpo/s)
+PASS Corredores: 4 (3 rivales de la IA sin cuerpo)
+INFO Salas: RoomJugs, RoomBraziers, RoomLanterns, RoomBells, RoomCipher, RoomFootprints, RoomSymbols, RoomClock, RoomMirrors, RoomPipes, RoomPortal
+PASS Sala 1 Fuente de las Medidas: 8 s
+PASS Sala 2 Cripta de las Antorchas: 11 s
+PASS Sala 3 Muro de los Faroles: 9 s
+PASS Sala 4 Campanario: 12 s
+PASS Sala 5 Gabinete del Cifrado: 5 s
+PASS Sala 6 Pasillo de las Huellas: 7 s
+PASS Sala 7 Sala de los Símbolos: 8 s
+PASS Sala 8 Vestíbulo del Reloj: 9 s
+PASS Sala 9 Galería de Espejos: 12 s
+PASS Sala 10 Sala de las Tuberías: 19 s
+PASS Sala 11 Portal del Multiverso: 19 s
+PASS Torre completada en solitario: 1:58 · salas con ayudante: 0
+PASS Puesto al llegar: 1.º
+PASS Fin de la carrera tras la última llegada humana
+INFO 1. Tú: 1:58
+INFO 2. Coral (IA): sala 2
+INFO 3. Menta (IA): sala 2
+INFO 4. Rayo (IA): sala 2

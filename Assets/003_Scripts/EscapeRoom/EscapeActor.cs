@@ -29,6 +29,8 @@ public sealed class EscapeActor : MonoBehaviour
     public bool Puppet { get; private set; }
     public NetPose NetPose { get; } = new NetPose();
     public void SetPuppet() => Puppet = true;
+    /// <summary>Race (2026-11-17): the bot that comes in after 1:30 to solve the room for you.</summary>
+    public bool Helper { get; set; }
 
     // Written by EscapeBot every frame.
     [System.NonSerialized] public Vector3 BotMove;
@@ -179,6 +181,16 @@ public sealed class EscapeActor : MonoBehaviour
         if (target != null && (!target.CanUse(this) || !target.InRange(this))) target = null;
         if (target != Focus) { Focus = target; UseProgress = 0f; }
         if (target == null || Time.time < useCooldown) return;
+        if (!target.Mine(this))
+        {
+            // Co-op: a teammate's station. A bot's keypad can be dictated (you type for them); anything else is asked for.
+            bool dictate = target.NetLocal && Director.IsBotActor(Director.ActorOfSeat(target.Owner));
+            if (!dictate)
+            {
+                if (pressed && !DrivenByBot) { useCooldown = Time.time + .45f; Director.AskFor(this, target); }
+                return;
+            }
+        }
         if (target.hold <= 0f)
         {
             if (pressed) Fire(target);
@@ -200,7 +212,7 @@ public sealed class EscapeActor : MonoBehaviour
         Vector3 look = target.Point - transform.position; look.y = 0f;
         if (look.sqrMagnitude > .01f && !FirstPerson) transform.rotation = Quaternion.LookRotation(look);
         target.onUse?.Invoke(this);
-        if (Director.Net != null && !target.NetLocal) Director.Net.SendUse(this, target);
+        Director.OnFired(this, target);
     }
 
     /// <summary>Online: replay another computer's use of an interactable on this copy.</summary>
@@ -240,7 +252,6 @@ public sealed class EscapeActor : MonoBehaviour
         Vector3 at = transform.position + transform.forward * .8f + Vector3.up * .6f;
         if (Physics.Raycast(at + Vector3.up, Vector3.down, out var hit, 4f, ~0, QueryTriggerInteraction.Ignore)) at = hit.point + Vector3.up * .55f;
         DropAt(at);
-        if (Director.Net != null && !Puppet) Director.Net.SendDrop(this, at);
     }
 
     public void DropAt(Vector3 at)

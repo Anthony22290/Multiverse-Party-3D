@@ -1,13 +1,12 @@
-Equipo: 4 jugadores, 7 salas: RoomLanterns, RoomJugs, RoomPipes, RoomNumbers, RoomFootprints, RoomSlider, RoomPortal
-PASS Sala 1 Muro de los Faroles: 7,2 s de juego
-PASS Sala 2 Fuente de las Medidas: 8,7 s de juego
-PASS Sala 3 Sala de las Tuberías: 13,3 s de juego
-PASS Sala 4 Observatorio de los Números: 3,5 s de juego
-PASS Sala 5 Pasillo de las Huellas: 5,6 s de juego
-PASS Sala 6 Taller del Rompecabezas: 17,8 s de juego
-PASS Sala 7 Portal del Multiverso: 13,5 s de juego
-PASS Torre completada: estado Won, sala activa 7, tiempo de juego 70 s de 1155
+Equipo: 4 jugadores, 6 salas: RoomClock, RoomBells, RoomMirrors, RoomCipher, RoomSlider, RoomPortal
+PASS Sala 1 Vestíbulo del Reloj: 13,7 s de juego
+PASS Sala 2 Campanario: 12,5 s de juego
+PASS Sala 3 Galería de Espejos: 14,2 s de juego
+PASS Sala 4 Gabinete del Cifrado: 6,4 s de juego
+PASS Sala 5 Taller del Rompecabezas: 17,3 s de juego
+PASS Sala 6 Portal del Multiverso: 14,1 s de juego
+PASS Torre completada: estado Won, sala activa 6, tiempo de juego 78 s de 1080
 PASS Todo el equipo llegó a la sala final (4/4)
 PASS Pantalla de resultados mostrada
-INFO Más útil: Coral (59 acciones)
-INFO Punto de partida para: Coral (6 salas)
+INFO Más útil: Menta (22 acciones)
+INFO Punto de partida para: Tú (3 salas)

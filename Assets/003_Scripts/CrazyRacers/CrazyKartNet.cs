@@ -29,7 +29,7 @@ public sealed class CrazyKartNet : MonoBehaviour
             .OrderBy(b => Mathf.Round(b.transform.position.x * 10)).ThenBy(b => Mathf.Round(b.transform.position.z * 10)).ThenBy(b => b.transform.position.y).ToArray();
         PartyLink.Listen(ChKarts, OnKarts);
         PartyLink.Listen(ChEvent, OnEvent);
-        PartyLink.MarkReady();
+        PartyLink.Fast(ChKarts); PartyLink.MarkReady();
     }
 
     void OnDestroy() => PartyLink.Reset();

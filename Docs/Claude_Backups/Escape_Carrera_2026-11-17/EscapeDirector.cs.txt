@@ -1,0 +1,602 @@
+using System.Collections.Generic;
+using System.Linq;
+using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
+using UnityEngine.SceneManagement;
+
+/// <summary>
+/// "Torre del Multiverso": cooperative first-person escape room for 4–6 players (local player + bot teammates).
+/// Six rooms drawn from a pool of ten (the portal is always last); solving a room opens the door to the next one.
+/// Clues are not given away: each room reveals vague clues over time, or earlier with H at a time penalty.
+/// Flow: countdown → play (16 min) → results. In a party match the most useful player earns the point if the team escapes.
+/// </summary>
+public sealed class EscapeDirector : MonoBehaviour
+{
+    public enum Phase { Lobby, Countdown, Playing, Won, Lost }
+
+    public const float RoomLength = 22f, RoomWidth = 20f;
+    public static string[] Names = { "Tú", "Coral", "Menta", "Rayo", "Lila", "Ámbar" };
+    static string[] Models = { "Anne", "Henry", "Mako", "Captain_Barbarossa", "Anne", "Henry" };
+    public static Color[] Colors =
+    {
+        new Color(.3f, .85f, 1f), new Color(1f, .38f, .48f), new Color(.38f, 1f, .62f),
+        new Color(1f, .86f, .28f), new Color(.76f, .5f, 1f), new Color(1f, .6f, .22f)
+    };
+
+    [Tooltip("Total time for the whole tower.")] public float totalSeconds = 960f;
+    [Tooltip("Tests: a bot also drives the local player.")] public bool AutoHuman;
+    [Tooltip("Multiplies how long bots wait before finishing a puzzle for the player.")] public float AssistScale = 1f;
+
+    public Phase State { get; private set; } = Phase.Lobby;
+    public bool Running => State == Phase.Playing;
+    public bool InputFree => Running && (HUD == null || HUD.InputFree);
+    public float Countdown { get; private set; }
+    public float Elapsed { get; private set; }
+    public bool NewRecord { get; private set; }
+    public float BestTime { get; private set; }
+    public float Remaining => Mathf.Max(0f, totalSeconds - Elapsed);
+    public int PlayerCount { get; private set; } = 4;
+    public readonly List<EscapeActor> Actors = new();
+    public EscapeActor Human { get; private set; }
+    public EscapeRoom[] Rooms { get; private set; }
+    public int ActiveRoomIndex { get; private set; }
+    public EscapeRoom ActiveRoom => Rooms != null && ActiveRoomIndex < Rooms.Length ? Rooms[ActiveRoomIndex] : null;
+    public float[] SolvedAt { get; private set; }
+    public string Notice { get; private set; } = "";
+    public float NoticeAt { get; private set; }
+    public EscapeCamera View { get; private set; }
+    public EscapeHUD HUD { get; private set; }
+    public EscapeLevel Level { get; private set; }
+    public float RoomTime => Elapsed - roomStartedAt;
+    // ---- online party (2026-11-12): same tower everywhere, uses replayed on every computer (EscapeNet).
+    public EscapeNet Net { get; private set; }
+    public bool IsClient => Net != null && PartyLink.IsClient;
+    /// <summary>True while a client applies a solve decided by the host.</summary>
+    public bool NetSolving { get; private set; }
+    float roomStartedAt, noticeUntil;
+
+    void Start()
+    {
+        Application.targetFrameRate = 60;
+        Application.runInBackground = true;
+        PlayerCount = Mathf.Clamp(PlayerPrefs.GetInt("EscapePlayers", 4), 4, 6);
+        EscapeAudio.Ensure();
+        if (GetComponent<EscapeAtmosphere>() == null) gameObject.AddComponent<EscapeAtmosphere>();
+        SetupEnvironment();
+
+        EscapeInteractable.ResetIds();
+        PartyLink.SeedRandom(21);   // online: every computer draws and builds the same rooms
+        Level = gameObject.AddComponent<EscapeLevel>();
+        Rooms = Level.Build(this);
+        SolvedAt = new float[Rooms.Length];
+        totalSeconds = Mathf.Max(totalSeconds, Rooms.Length * 180f);   // ~3 min per room (co-op: stations, team lock)
+
+        var cam = Camera.main;
+        if (cam == null)
+        {
+            var c = new GameObject("Main Camera", typeof(Camera), typeof(AudioListener)) { tag = "MainCamera" };
+            cam = c.GetComponent<Camera>();
+        }
+        cam.clearFlags = CameraClearFlags.SolidColor;
+        cam.backgroundColor = new Color(.07f, .05f, .16f);
+        var data = cam.GetComponent<UniversalAdditionalCameraData>();
+        if (data == null) data = cam.gameObject.AddComponent<UniversalAdditionalCameraData>();
+        data.renderPostProcessing = true;
+        View = cam.gameObject.AddComponent<EscapeCamera>();
+        View.Director = this;
+
+        HUD = gameObject.AddComponent<EscapeHUD>();
+        HUD.Director = this;
+        EscapeAudio.Music("music");
+        if (PartyLink.Active) { Net = gameObject.AddComponent<EscapeNet>(); Net.Init(this); }
+    }
+
+    void SetupEnvironment()
+    {
+        RenderSettings.ambientMode = AmbientMode.Trilight;
+        RenderSettings.ambientSkyColor = new Color(.62f, .6f, .78f);
+        RenderSettings.ambientEquatorColor = new Color(.45f, .42f, .55f);
+        RenderSettings.ambientGroundColor = new Color(.22f, .18f, .28f);
+        RenderSettings.fog = true;
+        RenderSettings.fogMode = FogMode.Linear;
+        RenderSettings.fogColor = new Color(.09f, .06f, .2f);
+        RenderSettings.fogStartDistance = 40f; RenderSettings.fogEndDistance = 120f;
+
+        if (FindAnyObjectByType<Light>() == null)
+        {
+            var sun = new GameObject("Luz de la torre").AddComponent<Light>();
+            sun.type = LightType.Directional; sun.intensity = 1.05f; sun.color = new Color(1f, .93f, .84f);
+            sun.shadows = LightShadows.Soft; sun.transform.rotation = Quaternion.Euler(58f, -30f, 0f);
+        }
+
+        var volume = new GameObject("Postprocesado de la torre").AddComponent<Volume>();
+        volume.isGlobal = true;
+        var profile = ScriptableObject.CreateInstance<VolumeProfile>();
+        var bloom = profile.Add<Bloom>(true); bloom.intensity.Override(.75f); bloom.threshold.Override(.95f); bloom.scatter.Override(.6f);
+        var vignette = profile.Add<Vignette>(true); vignette.intensity.Override(.24f); vignette.smoothness.Override(.45f);
+        var color = profile.Add<ColorAdjustments>(true); color.saturation.Override(14f); color.contrast.Override(8f); color.postExposure.Override(.1f);
+        volume.sharedProfile = profile;
+    }
+
+    // ------------------------------------------------------------------ flow
+
+    public void StartGame(int players)
+    {
+        if (State != Phase.Lobby) return;
+        PlayerCount = Mathf.Clamp(players, 4, 6);
+        PlayerPrefs.SetInt("EscapePlayers", PlayerCount);
+        for (int i = 0; i < PlayerCount; i++)
+        {
+            if (i == 0 && MultiverseParty.InMatch)
+            {
+                var roster = MultiverseParty.CurrentRoster();
+                for (int r = 0; r < Mathf.Min(roster.Count, Names.Length); r++) { Names[r] = roster.Names[r]; Colors[r] = roster.Colors[r]; Models[r] = PartyGames.ModelName(roster.Characters[r]); }
+            }
+            var go = new GameObject(i == 0 ? "Jugador (tú)" : "Compañero " + Names[i]);
+            go.transform.SetPositionAndRotation(SpawnPoint(Rooms[0], PartyLink.Active ? Mathf.Max(0, PartyLink.MemberOfSlot(i)) : i), Quaternion.identity);
+            var a = go.AddComponent<EscapeActor>();
+            a.Initialize(this, i, i == 0, Names[i], Models[i % Models.Length], Colors[i]);
+            if (PartyLink.IsPuppet(i)) a.SetPuppet();
+            else if (i != 0 || AutoHuman) go.AddComponent<EscapeBot>();
+            Actors.Add(a);
+            if (i == 0) Human = a;
+        }
+        // Bot plans hand out jobs by role ("the first bot works the jugs"); online a slot may belong to a person.
+        int role = 1;
+        foreach (var a in Actors) if (a != Human && !a.Puppet) a.Role = role++;
+        foreach (var a in Actors) if (a.Puppet) a.Role = role++;
+        if (Human != null) Human.Role = 0;
+        PartyLink.SeedRandom(22);
+        foreach (var r in Rooms) r.OnTeamReady();
+        // Co-op (2026-11-16): every station gets an owner; nobody can solve a room alone.
+        EscapeInteractable.SeatOf = SeatOf;
+        foreach (var r in Rooms) r.AssignStations();
+        State = Phase.Countdown;
+        Countdown = 3.5f;
+        View?.Snap();
+    }
+
+    public Vector3 SpawnPoint(EscapeRoom room, int slot) =>
+        room.Entry + new Vector3((slot % 3 - 1) * 1.3f, .08f, -(slot / 3) * 1.15f);
+
+    void Update()
+    {
+        if (IsClient) ClientTick();
+        else if (State == Phase.Countdown && Net != null && !PartyLink.AllReady) { Notice = PartyLink.WaitingText; noticeUntil = Time.time + .5f; }
+        else if (State == Phase.Countdown)
+        {
+            float before = Countdown;
+            Countdown -= Time.deltaTime;
+            if (Mathf.CeilToInt(before) != Mathf.CeilToInt(Countdown) && Countdown > 0f) EscapeAudio.PlayUI("count");
+            if (Countdown <= 0f)
+            {
+                State = Phase.Playing;
+                roomStartedAt = 0f;
+                EscapeAudio.PlayUI("go");
+                Notify(StartText);
+                PartyLink.SeedRandom(100 + ActiveRoomIndex);
+                ActiveRoom?.OnActivated();
+                if (Net != null) Net.SendSolved(255, null);   // tells clients the tower is running (255 = start)
+            }
+        }
+        else if (State == Phase.Playing)
+        {
+            Elapsed += Time.deltaTime;
+            foreach (var a in Actors)
+                if (!a.Puppet && a.transform.position.y < -3f) Respawn(a, "¡Al vacío! Vuelves a la entrada de la sala");
+            LockTick(true);
+            if (Remaining <= 0f) Lose();
+        }
+        CoopTick();
+        if (Rooms != null) foreach (var r in Rooms) r.Tick();
+        if (Notice.Length > 0 && Time.time > noticeUntil) Notice = "";
+
+        var k = UnityEngine.InputSystem.Keyboard.current;
+        if (k != null && k.mKey.wasPressedThisFrame && (HUD == null || !HUD.KeypadOpen)) EscapeAudio.ToggleMusic();
+    }
+
+    public void OnRoomSolved(EscapeRoom room, EscapeActor by)
+    {
+        int i = room.Index;
+        if (Net != null && PartyLink.IsHost) Net.SendSolved(i, by);
+        SolvedAt[i] = Elapsed;
+        if (by != null) by.Solves++;
+        EscapeAudio.PlayUI("success");
+        EscapeAudio.PlayUI("cheer", .6f);
+        EscapeAudio.Duck(2f);
+        View?.Shake(.25f);
+        {   // celebration at the exit of the solved room
+            Vector3 exit = room.W(new Vector3(0f, 1.5f, EscapeRoom.Length * .5f - 1.5f));
+            MultiverseFX.Rainbow(exit, 40, 9); MultiverseFX.Ring(room.W(new Vector3(0, .05f, EscapeRoom.Length * .5f - 2f)), 5, new Color(1, .85f, .3f), .7f);
+            MultiverseFX.FloatText(exit + Vector3.up * 1.5f, "¡SALA " + (i + 1) + " SUPERADA!", new Color(1, .85f, .3f), 1.1f, 2f);
+        }
+        if (i < Rooms.Length - 1)
+        {
+            // Co-op: the door only opens when the WHOLE team stands in the circle in front of it (team lock).
+            LockRoom = i; lockHold = 0f; LockCount = 0;
+            BuildLock(room);
+            Notify($"¡SALA {i + 1} SUPERADA!  ·  Todos al círculo de la puerta");
+        }
+        else Win();
+    }
+
+    void Win()
+    {
+        if (State != Phase.Playing) return;
+        State = Phase.Won;
+        ActiveRoomIndex = Rooms.Length;
+        EscapeAudio.PlayUI("win");
+        EscapeAudio.Duck(6f);
+        // Best escape time is kept per team size.
+        string key = "SalaEscape_Mejor_" + Actors.Count;
+        float best = PlayerPrefs.GetFloat(key, 0);
+        NewRecord = best <= 0 || Elapsed < best; BestTime = NewRecord ? Elapsed : best;
+        if (NewRecord) { PlayerPrefs.SetFloat(key, Elapsed); PlayerPrefs.Save(); EscapeAudio.PlayUI("record", .8f); Notify("¡NUEVO RÉCORD! " + Mathf.FloorToInt(Elapsed / 60) + ":" + ((int)Elapsed % 60).ToString("00")); }
+        HUD?.ShowResults();
+        var mvp = MostValuable;
+        PartyLink.Finish(mvp != null ? mvp.Slot : -1);
+    }
+
+    void Lose()
+    {
+        if (State != Phase.Playing) return;
+        State = Phase.Lost;
+        EscapeAudio.PlayUI("lose");
+        EscapeAudio.Duck(5f);
+        HUD?.ShowResults();
+        PartyLink.Finish(-1);
+    }
+
+    /// <summary>H: reveal the next clue of the active room now, at a time penalty.</summary>
+    public void RequestClue()
+    {
+        var room = ActiveRoom;
+        if (!Running || room == null) return;
+        if (IsClient) { Net.AskClue(); return; }   // the host reveals it for the whole team
+        if (room.CluesShown >= room.Clues.Length) { Notify("No quedan más pistas en esta sala"); return; }
+        if (!room.CanRequestClue) { Notify("Observa la sala un poco más antes de pedir una pista"); return; }
+        room.RequestClue();
+        Elapsed += EscapeRoom.CluePenalty;
+        EscapeAudio.PlayUI("beep", .8f);
+        Notify("PISTA " + room.CluesShown + "  ·  −" + EscapeRoom.CluePenalty.ToString("0") + " s");
+        if (Net != null) Net.SendClue(room.Index, room.CluesShown);
+    }
+
+    // ------------------------------------------------------------------ online (2026-11-12)
+
+    void ClientTick()
+    {
+        if (State != Phase.Playing) return;
+        Elapsed += Time.deltaTime;
+        LockTick(false);
+        if (Human != null && Human.transform.position.y < -3f) Respawn(Human, "¡Al vacío! Vuelves a la entrada de la sala");
+    }
+
+    /// <summary>Client: clock and phase from the host.</summary>
+    public void ApplyNet(Phase state, float countdown, float elapsed)
+    {
+        if (Actors.Count == 0) return;
+        if (State == Phase.Countdown && state == Phase.Countdown && Mathf.CeilToInt(Countdown) != Mathf.CeilToInt(countdown) && countdown > 0f && countdown < 3.4f) EscapeAudio.PlayUI("count");
+        Countdown = countdown;
+        if (state == Phase.Countdown && State == Phase.Countdown && countdown > 3.4f) { Notice = PartyLink.WaitingText; noticeUntil = Time.time + .5f; }
+        if (Mathf.Abs(Elapsed - elapsed) > .35f) Elapsed = elapsed;
+        if (state == State) return;
+        if (state == Phase.Playing && State == Phase.Countdown) StartRunning();
+        else if (state == Phase.Lost) { if (State == Phase.Countdown) StartRunning(); Lose(); }
+    }
+
+    void StartRunning()
+    {
+        if (State != Phase.Countdown) return;
+        State = Phase.Playing;
+        roomStartedAt = 0f;
+        EscapeAudio.PlayUI("go");
+        Notify(StartText);
+        PartyLink.SeedRandom(100 + ActiveRoomIndex);
+        ActiveRoom?.OnActivated();
+    }
+
+    /// <summary>Client: the host solved room <paramref name="index"/> (255 = the tower just started).</summary>
+    public void NetSolve(int index, EscapeActor by)
+    {
+        if (index == 255) { StartRunning(); return; }
+        if (Rooms == null || index < 0 || index >= Rooms.Length || Rooms[index].Solved) return;
+        if (State == Phase.Countdown) StartRunning();
+        NetSolving = true;
+        try { Rooms[index].NetSolve(by); }
+        finally { NetSolving = false; }
+    }
+
+    public void NetClue(int index, int shown)
+    {
+        if (Rooms == null || index < 0 || index >= Rooms.Length) return;
+        Rooms[index].ForceClues(shown);
+        EscapeAudio.PlayUI("beep", .8f);
+        Notify("PISTA " + shown + "  ·  −" + EscapeRoom.CluePenalty.ToString("0") + " s");
+    }
+
+    /// <summary>A keypad code typed (or chosen by a bot) here: try it here and replay it on the other computers.</summary>
+    public bool NetSubmit(EscapeRoom room, string code, EscapeActor a)
+    {
+        if (Net != null && a != null && !a.Puppet) Net.SendSubmit(a, room.Index, code);
+        return room.KeypadSubmit(code, a);
+    }
+
+    public void Notify(string text)
+    {
+        Notice = text; NoticeAt = Time.time; noticeUntil = Time.time + 3.6f;
+    }
+
+    public void Respawn(EscapeActor a, string message)
+    {
+        if (a == null || a.Puppet) return;
+        var room = Rooms[Mathf.Clamp(RoomIndexAt(a.transform.position), 0, Rooms.Length - 1)];
+        EscapeAudio.Play("fall", a.transform.position, .8f);
+        a.Knock(SpawnPoint(room, a.Slot), .5f);
+        if (a.IsHuman && message != null) Notify(message);
+    }
+
+    public int RoomIndexAt(Vector3 world) => Mathf.FloorToInt((world.z + RoomLength * .5f) / RoomLength);
+    public int RoomsSolved => SolvedAt == null ? 0 : Enumerable.Range(0, Rooms.Length).Count(i => Rooms[i].Solved);
+    public EscapeActor MostHelpful => Actors.OrderByDescending(a => a.Actions).FirstOrDefault();
+    /// <summary>Party point: whoever solved the most rooms (ties broken by useful actions).</summary>
+    public EscapeActor MostValuable => Actors.OrderByDescending(a => a.Solves).ThenByDescending(a => a.Actions).FirstOrDefault();
+
+    public EscapeInteractable BestInteractable(EscapeActor a)
+    {
+        // First person: the local player uses what the crosshair points at.
+        if (a.IsHuman && !a.DrivenByBot && View != null && View.FirstPerson) return View.Aimed(a);
+        EscapeInteractable best = null;
+        float bestScore = float.MaxValue;
+        foreach (var it in EscapeInteractable.All)
+        {
+            if (it == null || !it.CanUse(a) || !it.InRange(a)) continue;
+            Vector3 d = it.Point - a.transform.position; d.y = 0f;
+            float m = d.magnitude;
+            float score = m - (m > .01f ? Vector3.Dot(a.transform.forward, d / m) * .5f : 0f);
+            if (score < bestScore) { bestScore = score; best = it; }
+        }
+        return best;
+    }
+
+    /// <summary>Bots: walk through open doors to the active room, then follow that room's plan.</summary>
+    public EscapeOrder OrderFor(EscapeActor a)
+    {
+        int here = Mathf.Clamp(RoomIndexAt(a.transform.position), 0, Rooms.Length - 1);
+        int active = Mathf.Min(ActiveRoomIndex, Rooms.Length - 1);
+        if (here < active)
+        {
+            float boundary = here * RoomLength + RoomLength * .5f;
+            Vector3 p = a.transform.position;
+            bool lined = Mathf.Abs(p.x) < 1f || p.z > boundary - .7f;
+            return EscapeOrder.Go(new Vector3(0f, 0f, boundary + (lined ? 2.4f : -1.6f)), .5f);
+        }
+        if (here > active) return EscapeOrder.Go(Rooms[active].Entry);
+        if (LockRoom == here)
+        {
+            float ang = Actors.IndexOf(a) / (float)Mathf.Max(1, Actors.Count) * Mathf.PI * 2f;
+            return EscapeOrder.Exact(LockCenter(Rooms[here]) + new Vector3(Mathf.Cos(ang), 0f, Mathf.Sin(ang)) * 1.1f);
+        }
+        return RoomOrder(Rooms[here], a);
+    }
+
+    // ------------------------------------------------------------------ co-op (2026-11-16)
+    // 1) Stations: each puzzle piece belongs to one player (EscapeRoom.AssignStations). Bots only use their own; a bot's plan
+    //    that needs someone else's station is handed to that teammate, or the local player is told "¡te toca!".
+    // 2) Asking: E on a bot's station asks that bot to use it (keypads owned by a bot can be dictated: you type for them).
+    // 3) Team lock: after a room is solved, everybody has to stand in the circle by the door before it opens.
+    // 4) Hidden clues: in some rooms the owner of the key station cannot read the clues; teammates read them aloud.
+
+    const string StartText = "¡A ESCAPAR!  ·  Tus puestos brillan con tu color";
+    public int SeatOf(EscapeActor a) => a == null ? -1 : PartyLink.Active ? PartyLink.MemberOfSlot(a.Slot) : a.Slot;
+    public EscapeActor ActorOfSeat(int seat) { foreach (var a in Actors) if (SeatOf(a) == seat) return a; return null; }
+    /// <summary>Played by the AI on some computer (bots; the local player too in automatic tests).</summary>
+    public bool IsBotActor(EscapeActor a) => a != null && (a.Puppet ? !PartyLink.IsHumanMember(SeatOf(a)) : a.DrivenByBot);
+
+    readonly Dictionary<EscapeActor, (int frame, EscapeOrder order)> plans = new();
+    EscapeOrder PlanOf(EscapeRoom room, EscapeActor a)
+    {
+        if (plans.TryGetValue(a, out var p) && p.frame == Time.frameCount) return p.order;
+        var o = room.Order(a);
+        plans[a] = (Time.frameCount, o);
+        return o;
+    }
+
+    EscapeOrder RoomOrder(EscapeRoom room, EscapeActor a)
+    {
+        var ask = NextAsk(a);
+        if (ask != null) return EscapeOrder.Use(ask);
+        var o = PlanOf(room, a);
+        if (o.use != null && !o.use.Mine(a)) { Want(o.use); o = room.IdleOrder(a); }
+        if (!o.idle) return o;
+        int me = SeatOf(a);
+        foreach (var b in Actors)
+        {
+            if (b == a || b.Puppet || !b.DrivenByBot || RoomIndexAt(b.transform.position) != room.Index) continue;
+            var ob = PlanOf(room, b);
+            if (ob.use != null && ob.use.Owner >= 0 && ob.use.Owner == me && ob.use.CanUse(a)) return ob;   // my station: I do it
+        }
+        return o;
+    }
+
+    // ---- asking a bot to use its station
+    sealed class Ask { public EscapeInteractable it; public float at; }
+    readonly Dictionary<EscapeActor, List<Ask>> asks = new();
+    static readonly string[] Yes = { "¡Voy!", "¡Entendido!", "¡Ahora mismo!", "¡Hecho, voy!", "¡Marchando!" };
+
+    public void AskFor(EscapeActor from, EscapeInteractable it)
+    {
+        if (it == null) return;
+        var owner = ActorOfSeat(it.Owner);
+        if (owner == null || owner == from) return;
+        if (!IsBotActor(owner))
+        {
+            if (from == Human) Notify("Es el puesto de " + owner.DisplayName + ": ¡díselo!");
+            return;
+        }
+        if (from == Human) { Say(owner, Yes[Random.Range(0, Yes.Length)] + " (" + it.PromptFor(owner) + ")", 4f); EscapeAudio.PlayUI("beep", .4f); }
+        if (owner.Puppet) { Net?.SendAsk(from, it); return; }
+        Enqueue(owner, it);
+    }
+
+    public void Enqueue(EscapeActor owner, EscapeInteractable it)
+    {
+        if (owner == null || it == null) return;
+        if (!asks.TryGetValue(owner, out var list)) asks[owner] = list = new List<Ask>();
+        if (list.Count < 8) list.Add(new Ask { it = it, at = Time.time });
+    }
+
+    public void OnFired(EscapeActor a, EscapeInteractable it)
+    {
+        if (a != null && asks.TryGetValue(a, out var list)) { int i = list.FindIndex(x => x.it == it); if (i >= 0) list.RemoveAt(i); }
+    }
+
+    EscapeInteractable NextAsk(EscapeActor a)
+    {
+        if (!asks.TryGetValue(a, out var list)) return null;
+        while (list.Count > 0)
+        {
+            var q = list[0];
+            if (q.it == null || !q.it.isActiveAndEnabled || Time.time - q.at > 25f) { list.RemoveAt(0); continue; }
+            return q.it.CanUse(a) ? q.it : null;   // e.g. a lever still locked: wait for it
+        }
+        return null;
+    }
+
+    // ---- "¡te toca!" hints and teammates' speech
+    readonly Dictionary<EscapeInteractable, float> wanted = new();
+    float lastHint = -99f;
+    public bool WantedRecently(EscapeInteractable it) => it != null && wanted.TryGetValue(it, out var t) && Time.time - t < 2.5f;
+
+    /// <summary>A bot plan needs this station. If it is the local player's, it flashes and a teammate tells them (every 14 s at most).</summary>
+    public void Want(EscapeInteractable it)
+    {
+        if (it == null || Human == null || Human.DrivenByBot || !Running || it.Owner < 0 || it.Owner != SeatOf(Human)) return;
+        wanted[it] = Time.time;
+        if (Time.time - lastHint < 14f) return;
+        lastHint = Time.time;
+        Say(SomeBot(), "¡Te toca! " + it.PromptFor(Human) + " (está en tu color)", 7f);
+    }
+
+    EscapeActor SomeBot()
+    {
+        var bots = Actors.Where(IsBotActor).Where(x => x != Human).ToList();
+        return bots.Count == 0 ? null : bots[Mathf.Abs(Mathf.FloorToInt(Time.time / 7f)) % bots.Count];
+    }
+
+    readonly List<(string line, float until)> speech = new();
+    public string Speech { get; private set; } = "";
+
+    public void Say(EscapeActor who, string text, float seconds = 9f)
+    {
+        if (who == null || string.IsNullOrEmpty(text)) return;
+        string line = $"<color=#{ColorUtility.ToHtmlStringRGB(who.Tint)}><b>{who.DisplayName}:</b></color> {text}";
+        speech.RemoveAll(s => s.line == line);
+        speech.Add((line, Time.time + seconds));
+        while (speech.Count > 4) speech.RemoveAt(0);
+        RefreshSpeech();
+    }
+
+    void RefreshSpeech() => Speech = string.Join("\n", speech.Select(s => s.line));
+
+    int readRoom = -1;
+    float nextReadAt;
+
+    void CoopTick()
+    {
+        if (speech.RemoveAll(s => Time.time > s.until) > 0) RefreshSpeech();
+        // Hidden clues: teammates read them aloud for the blind local player (on every computer: it is only text).
+        var room = ActiveRoom;
+        if (!Running || room == null || room.Solved || !room.LocalBlind || room.ReadAloud == null || LockRoom >= 0) return;
+        if (readRoom != room.Index) { readRoom = room.Index; nextReadAt = 6f; }
+        if (RoomTime < nextReadAt) return;
+        nextReadAt = RoomTime + 50f;
+        var bots = Actors.Where(IsBotActor).Where(x => x != Human).ToList();
+        if (bots.Count == 0) return;
+        var lines = room.ReadAloud;
+        for (int i = 0; i < lines.Length; i++) Say(bots[i % bots.Count], lines[i], 22f);
+    }
+
+    // ---- team lock at the door
+    public int LockRoom { get; private set; } = -1;
+    public int LockCount { get; private set; }
+    public const float LockRadius = 2.3f;
+    float lockHold;
+    GameObject lockRing;
+    Material lockMat;
+
+    public Vector3 LockCenter(EscapeRoom r) => r.W(new Vector3(0f, 0f, EscapeRoom.Length * .5f - 3.2f));
+
+    bool InLock(EscapeActor a, Vector3 c)
+    {
+        Vector3 d = a.transform.position - c;
+        float dy = d.y; d.y = 0f;
+        return d.magnitude < LockRadius && Mathf.Abs(dy) < 1.6f;
+    }
+
+    void BuildLock(EscapeRoom room)
+    {
+        if (lockRing != null) Destroy(lockRing);
+        lockRing = new GameObject("Cerrojo del equipo");
+        lockRing.transform.SetParent(room.transform, false);
+        lockRing.transform.position = LockCenter(room);
+        lockMat = EscapeKit.Glow(new Color(1f, .82f, .3f), 1.6f);
+        EscapeKit.Shape(PrimitiveType.Cylinder, lockRing.transform, "Círculo del cerrojo", new Vector3(0, .035f, 0), new Vector3(LockRadius * 2f, .012f, LockRadius * 2f), lockMat, false);
+        EscapeKit.Shape(PrimitiveType.Cylinder, lockRing.transform, "Centro", new Vector3(0, .045f, 0), new Vector3(LockRadius * 1.8f, .012f, LockRadius * 1.8f), EscapeKit.Paint(Color.Lerp(room.Floor, Color.black, .25f)), false);
+        EscapeKit.Text(lockRing.transform, "TODOS AQUÍ", new Vector3(0, .07f, -.2f), new Vector3(90, 0, 0), .05f, new Color(1f, .9f, .5f));
+    }
+
+    void LockTick(bool decide)
+    {
+        if (LockRoom < 0 || Rooms == null) return;
+        var c = LockCenter(Rooms[LockRoom]);
+        int n = 0;
+        foreach (var a in Actors) if (InLock(a, c)) n++;
+        if (n > LockCount && lockMat != null) EscapeAudio.Play("plate_on", c, .5f);
+        LockCount = n;
+        if (lockMat != null) EscapeKit.SetGlow(lockMat, Color.Lerp(new Color(1f, .82f, .3f), new Color(.4f, 1f, .55f), n / (float)Mathf.Max(1, Actors.Count)), 1.4f + Mathf.Sin(Time.time * 6f) * .4f + n * .3f);
+        if (!decide) return;
+        if (n >= Actors.Count) { lockHold += Time.deltaTime; if (lockHold > .8f) Unlock(); }
+        else lockHold = 0f;
+    }
+
+    void Unlock()
+    {
+        int i = LockRoom;
+        if (i < 0 || i >= Rooms.Length - 1) return;
+        LockRoom = -1; lockHold = 0f;
+        if (lockRing != null) Destroy(lockRing);
+        if (Net != null && PartyLink.IsHost) Net.SendUnlock(i);
+        Level.OpenDoor(i);
+        EscapeAudio.PlayUI("go", .7f);
+        Notify($"¡CERROJO ABIERTO!  ·  Sala {i + 2}");
+        ActiveRoomIndex = i + 1;
+        roomStartedAt = Elapsed;
+        PartyLink.SeedRandom(100 + i + 1);
+        Rooms[i + 1].OnActivated();
+    }
+
+    /// <summary>Client: the host saw the whole team in the circle.</summary>
+    public void NetUnlock(int i)
+    {
+        if (Rooms == null || i < 0 || i >= Rooms.Length - 1) return;
+        if (!Rooms[i].Solved) NetSolve(i, null);
+        if (LockRoom == i) Unlock();
+    }
+
+    public string ObjectiveFor(EscapeRoom room)
+    {
+        if (room == null) return "";
+        if (LockRoom == room.Index) return $"¡Sala superada! CERROJO DEL EQUIPO: la puerta solo se abre con todos dentro del círculo dorado ({LockCount}/{Actors.Count}).";
+        return room.Objective + (room.RoleText.Length > 0 ? "\n<color=#FFD27A>" + room.RoleText + "</color>" : "");
+    }
+
+    public void Restart() { if (!MultiverseParty.InMatch) SceneManager.LoadScene(SceneManager.GetActiveScene().name); }
+
+    public void ReturnToHub()
+    {
+        if (MultiverseParty.InMatch) return;
+        if (Application.CanStreamedLevelBeLoaded("MundoDeInicio")) SceneManager.LoadScene("MundoDeInicio");
+    }
+}

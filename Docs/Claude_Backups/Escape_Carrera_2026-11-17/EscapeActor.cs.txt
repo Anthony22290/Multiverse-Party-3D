@@ -1,0 +1,305 @@
+using UnityEngine;
+using UnityEngine.InputSystem;
+
+/// <summary>
+/// One member of the escape team (the local player or a bot). CharacterController movement like the other
+/// minigames, the soft-toy crew look on the shared pirate rigs, E to use things, items carried above the head.
+/// </summary>
+public sealed class EscapeActor : MonoBehaviour
+{
+    public EscapeDirector Director { get; private set; }
+    public bool IsHuman { get; private set; }
+    public string DisplayName { get; private set; }
+    public int Slot { get; private set; }
+    /// <summary>Job order for bot plans: 0 = this computer's player, then its bots, then other players (offline it equals Slot).</summary>
+    public int Role { get; set; }
+    public Color Tint { get; private set; }
+    public CharacterController Controller { get; private set; }
+    public int Actions { get; set; }
+    public int Solves { get; set; }
+    bool FirstPerson => IsHuman && !DrivenByBot && Director != null && Director.View != null && Director.View.FirstPerson;
+    public EscapeItem Carried { get; private set; }
+    public EscapeInteractable Focus { get; private set; }
+    public float UseProgress { get; private set; }
+    public bool Stunned => Time.time < stunnedUntil;
+    public bool Grounded => Controller != null && Controller.isGrounded;
+    public float Speed { get; private set; }
+    public bool DrivenByBot => !IsHuman || (Director != null && Director.AutoHuman);
+    /// <summary>Online (2026-11-12): played on another computer; moved from the network, its actions arrive as events.</summary>
+    public bool Puppet { get; private set; }
+    public NetPose NetPose { get; } = new NetPose();
+    public void SetPuppet() => Puppet = true;
+
+    // Written by EscapeBot every frame.
+    [System.NonSerialized] public Vector3 BotMove;
+    [System.NonSerialized] public bool BotJump;
+    [System.NonSerialized] public EscapeInteractable BotUse;
+
+    const float RunSpeed = 6f, CarrySpeed = 5.3f, Gravity = 22f, JumpSpeed = 7.2f;
+    float vertical, stunnedUntil, useCooldown, stepAt, airTime;
+    Vector3 previous;
+    Animator animator;
+    string animState;
+    TextMesh nameTag;
+    Transform ring;
+
+    public void Initialize(EscapeDirector director, int slot, bool human, string displayName, string model, Color tint)
+    {
+        Director = director; Slot = slot; Role = slot; IsHuman = human; DisplayName = displayName; Tint = tint;
+        previous = transform.position;
+        Controller = gameObject.AddComponent<CharacterController>();
+        Controller.height = 1.7f; Controller.center = Vector3.up * .85f; Controller.radius = .34f;
+        Controller.stepOffset = .3f; Controller.slopeLimit = 50f; Controller.skinWidth = .03f;
+
+        var prefab = Resources.Load<GameObject>("PirateCharacters/Characters_" + model);
+        var atlas = EscapeKit.Art != null ? EscapeKit.Art.characterAtlas : null;
+        GameObject visual = prefab != null ? PirateArenaVisuals.AddModel(prefab, transform, 1.7f, atlas, false) : null;
+        if (visual != null)
+        {
+            foreach (var c in visual.GetComponentsInChildren<Collider>()) Destroy(c);
+            animator = visual.GetComponentInChildren<Animator>();
+            if (animator != null) { animator.applyRootMotion = false; animator.cullingMode = AnimatorCullingMode.AlwaysAnimate; }
+            PirateCrewStyle.Apply(this, transform, visual, slot);
+        }
+        else
+        {
+            EscapeKit.Shape(PrimitiveType.Capsule, transform, "Cuerpo", Vector3.up * .85f, new Vector3(.7f, .85f, .7f), EscapeKit.Paint(tint), false);
+        }
+
+        // Team colour ring and floating name.
+        ring = EscapeKit.Shape(PrimitiveType.Cylinder, transform, "Aro del equipo", Vector3.up * .03f, new Vector3(1f, .012f, 1f), EscapeKit.Glow(tint, .9f), false).transform;
+        nameTag = EscapeKit.Text(transform, human ? "TÚ" : displayName.ToUpperInvariant(), Vector3.up * 2.55f, Vector3.zero, .026f, tint);
+    }
+
+    /// <summary>First person: the local body only casts shadows; the name tag and ring disappear.</summary>
+    public void SetFirstPerson(bool on)
+    {
+        foreach (var r in GetComponentsInChildren<Renderer>(true))
+        {
+            if (Carried != null && r.transform.IsChildOf(Carried.transform)) continue;
+            r.shadowCastingMode = on ? UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly : UnityEngine.Rendering.ShadowCastingMode.On;
+        }
+        if (nameTag != null) nameTag.gameObject.SetActive(!on);
+        if (ring != null) ring.gameObject.SetActive(!on);
+    }
+
+    void Update()
+    {
+        if (Director == null) return;
+        if (Puppet)
+        {
+            if (NetPose.Get(out var np, out var nr)) transform.SetPositionAndRotation(np, nr);
+            Vector3 moved = transform.position - previous; moved.y = 0f;
+            Speed = Mathf.Lerp(Speed, moved.magnitude / Mathf.Max(Time.deltaTime, .0001f), .3f);
+            previous = transform.position;
+            Animate();
+            return;
+        }
+        Vector3 move = Vector3.zero;
+        bool jump = false, held = false, pressed = false;
+        EscapeInteractable target = null;
+
+        if (Director.Running && !Stunned)
+        {
+            if (DrivenByBot)
+            {
+                move = BotMove; jump = BotJump; target = BotUse;
+                held = pressed = target != null;
+                BotJump = false;
+            }
+            else if (Director.InputFree)
+            {
+                var k = Keyboard.current;
+                if (k != null)
+                {
+                    var axis = new Vector2(
+                        (k.dKey.isPressed || k.rightArrowKey.isPressed ? 1 : 0) - (k.aKey.isPressed || k.leftArrowKey.isPressed ? 1 : 0),
+                        (k.wKey.isPressed || k.upArrowKey.isPressed ? 1 : 0) - (k.sKey.isPressed || k.downArrowKey.isPressed ? 1 : 0));
+                    move = Quaternion.Euler(0, Director.View != null ? Director.View.Yaw : 0f, 0) * new Vector3(axis.x, 0, axis.y);
+                    jump = k.spaceKey.wasPressedThisFrame;
+                    target = Director.BestInteractable(this);
+                    held = k.eKey.isPressed; pressed = k.eKey.wasPressedThisFrame;
+                    if (k.qKey.wasPressedThisFrame && Carried != null) Drop();
+                }
+            }
+        }
+
+        Move(move, Time.deltaTime, jump);
+        ProcessUse(target, pressed, held);
+        Animate();
+    }
+
+    void LateUpdate()
+    {
+        var cam = Director != null && Director.View != null ? Director.View.transform : null;
+        if (nameTag != null && cam != null) nameTag.transform.rotation = cam.rotation;
+        if (ring != null) ring.localScale = new Vector3(1f, .012f, 1f) * (1f + (Focus != null ? Mathf.Sin(Time.time * 10f) * .06f : 0f));
+    }
+
+    public void Move(Vector3 direction, float delta, bool jump)
+    {
+        if (Controller == null || !Controller.enabled) return;
+        bool grounded = Controller.isGrounded;
+        if (grounded)
+        {
+            if (airTime > .45f) EscapeAudio.Play("land_0", transform.position, IsHuman ? .5f : .25f);
+            airTime = 0f;
+            if (vertical < 0f) vertical = -2f;
+            if (jump) { vertical = JumpSpeed; EscapeAudio.Play("jump_" + Random.Range(0, 3), transform.position, IsHuman ? .45f : .2f); }
+        }
+        else airTime += delta;
+
+        float speed = Carried != null ? CarrySpeed : RunSpeed;
+        float remaining = Mathf.Min(delta, .2f);
+        while (remaining > 0f)
+        {
+            float dt = Mathf.Min(remaining, 1f / 60f);
+            remaining -= dt;
+            vertical = Mathf.Max(-28f, vertical - Gravity * dt);
+            var flags = Controller.Move((Vector3.ClampMagnitude(direction, 1f) * speed + Vector3.up * vertical) * dt);
+            if ((flags & CollisionFlags.Above) != 0 && vertical > 0f) vertical = 0f;
+            if ((flags & CollisionFlags.Below) != 0 && vertical < 0f) vertical = -2f;
+        }
+        if (FirstPerson) transform.rotation = Quaternion.Euler(0, Director.View.Yaw, 0);
+        else if (direction.sqrMagnitude > .01f)
+            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(new Vector3(direction.x, 0, direction.z)), delta * 14f);
+
+        Vector3 flat = transform.position - previous; flat.y = 0f;
+        Speed = flat.magnitude / Mathf.Max(delta, .0001f);
+        previous = transform.position;
+        if (grounded && Speed > 2f && Time.time > stepAt && IsHuman)
+        {
+            stepAt = Time.time + .3f;
+            EscapeAudio.Play("step_" + Random.Range(0, 3), transform.position, .22f, .12f);
+        }
+    }
+
+    void ProcessUse(EscapeInteractable target, bool pressed, bool held)
+    {
+        if (target != null && (!target.CanUse(this) || !target.InRange(this))) target = null;
+        if (target != Focus) { Focus = target; UseProgress = 0f; }
+        if (target == null || Time.time < useCooldown) return;
+        if (!target.Mine(this))
+        {
+            // Co-op: a teammate's station. A bot's keypad can be dictated (you type for them); anything else is asked for.
+            bool dictate = target.NetLocal && Director.IsBotActor(Director.ActorOfSeat(target.Owner));
+            if (!dictate)
+            {
+                if (pressed && !DrivenByBot) { useCooldown = Time.time + .45f; Director.AskFor(this, target); }
+                return;
+            }
+        }
+        if (target.hold <= 0f)
+        {
+            if (pressed) Fire(target);
+            return;
+        }
+        if (held)
+        {
+            UseProgress += Time.deltaTime / target.hold;
+            if (UseProgress >= 1f) Fire(target);
+        }
+        else UseProgress = Mathf.MoveTowards(UseProgress, 0f, Time.deltaTime * 2f);
+    }
+
+    void Fire(EscapeInteractable target)
+    {
+        UseProgress = 0f;
+        useCooldown = Time.time + .45f;
+        Actions++;
+        Vector3 look = target.Point - transform.position; look.y = 0f;
+        if (look.sqrMagnitude > .01f && !FirstPerson) transform.rotation = Quaternion.LookRotation(look);
+        target.onUse?.Invoke(this);
+        Director.OnFired(this, target);
+        if (Director.Net != null && !target.NetLocal) Director.Net.SendUse(this, target);
+    }
+
+    /// <summary>Online: replay another computer's use of an interactable on this copy.</summary>
+    public void NetFire(EscapeInteractable target)
+    {
+        Actions++;
+        UseProgress = 0f;
+        target.onUse?.Invoke(this);
+    }
+
+    void Animate()
+    {
+        if (animator == null) return;
+        string state = Speed > .4f ? "Base Layer.Walk" : "Base Layer.Idle";
+        if (state != animState && animator.HasState(0, Animator.StringToHash(state)))
+        {
+            animator.CrossFade(state, .12f);
+            animState = state;
+        }
+        animator.speed = state == "Base Layer.Walk" ? Mathf.Clamp(Speed / 3.4f, .8f, 1.7f) : 1f;
+    }
+
+    // ------------------------------------------------------------------ items
+
+    public void Give(EscapeItem item)
+    {
+        if (item == null) return;
+        if (Carried != null) Drop();
+        Carried = item;
+        item.OnPicked(this);
+        if (IsHuman) Director.Notify("Llevas: " + item.label + "  ·  Q para soltar");
+    }
+
+    public void Drop()
+    {
+        if (Carried == null) return;
+        Vector3 at = transform.position + transform.forward * .8f + Vector3.up * .6f;
+        if (Physics.Raycast(at + Vector3.up, Vector3.down, out var hit, 4f, ~0, QueryTriggerInteraction.Ignore)) at = hit.point + Vector3.up * .55f;
+        DropAt(at);
+        if (Director.Net != null && !Puppet) Director.Net.SendDrop(this, at);
+    }
+
+    public void DropAt(Vector3 at)
+    {
+        if (Carried == null) return;
+        var item = Carried;
+        Carried = null;
+        item.OnDropped(at);
+    }
+
+    /// <summary>Removes and returns the carried item (the caller decides what happens to it).</summary>
+    public EscapeItem TakeCarried()
+    {
+        var item = Carried;
+        Carried = null;
+        return item;
+    }
+
+    // ------------------------------------------------------------------ helpers
+
+    public void Teleport(Vector3 position)
+    {
+        Controller.enabled = false;
+        transform.position = position;
+        vertical = 0f;
+        previous = position;
+        Controller.enabled = true;
+        if (IsHuman) Director.View?.Snap();
+    }
+
+    public void Knock(Vector3 to, float stun)
+    {
+        if (Puppet) return;   // its own computer handles it
+        if (Carried != null) Drop();
+        Teleport(to);
+        stunnedUntil = Time.time + stun;
+    }
+
+    public void Stun(float seconds) { if (!Puppet) stunnedUntil = Mathf.Max(stunnedUntil, Time.time + seconds); }
+
+    void OnControllerColliderHit(ControllerColliderHit hit)
+    {
+        var rb = hit.rigidbody;
+        if (rb == null || rb.isKinematic || hit.moveDirection.y < -.3f) return;
+        var dir = new Vector3(hit.moveDirection.x, 0f, hit.moveDirection.z);
+        if (dir.sqrMagnitude < .01f) return;
+        dir.Normalize();
+        var v = rb.linearVelocity;
+        rb.linearVelocity = new Vector3(dir.x * 2.5f, v.y, dir.z * 2.5f);
+    }
+}

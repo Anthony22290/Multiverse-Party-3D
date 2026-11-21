@@ -222,9 +222,7 @@ public sealed class MultiverseHub : MonoBehaviour
             p.position = dir * 5.6f; p.rotation = Quaternion.LookRotation(-dir);
             Shape(PrimitiveType.Cube, p, "Base", p.position + Vector3.up * .25f, new Vector3(1.1f, .5f, 1.1f), darkWood);
             Shape(PrimitiveType.Cube, p, "Mástil", p.position + Vector3.up * 2.1f, new Vector3(.18f, 3.6f, .18f), iron, false);
-            var discs = new Renderer[MultiverseParty.WinScore];
-            for (int d = 0; d < discs.Length; d++)
-                discs[d] = Shape(PrimitiveType.Cylinder, p, "Punto " + (d + 1), p.position + Vector3.up * (.78f + d * .62f), new Vector3(.8f, .13f, .8f), Tint(new Color(.55f, .58f, .66f)), false).GetComponent<Renderer>();
+            ScoreDiscs(p, MultiverseParty.WinScore);
             var cap = Shape(PrimitiveType.Sphere, p, "Remate", p.position + Vector3.up * 4.1f, Vector3.one * .6f, Tint(Color.gray), false).GetComponent<Renderer>();
             var name = Sign(p, "", p.position + Vector3.up * 4.8f, Quaternion.identity, .05f, Color.white, 80);
             name.gameObject.AddComponent<HubBillboard>();
@@ -398,6 +396,18 @@ public sealed class MultiverseHub : MonoBehaviour
     }
 
     /// <summary>Find the reactive pieces in a world built either now or in the editor.</summary>
+    /// <summary>(Re)builds the score discs of a pillar for the points of this match (1–15), spread over the mast.</summary>
+    Renderer[] ScoreDiscs(Transform p, int count)
+    {
+        for (int c = p.childCount - 1; c >= 0; c--) if (p.GetChild(c).name.StartsWith("Punto ")) Kill(p.GetChild(c).gameObject);
+        count = Mathf.Max(1, count);
+        float step = Mathf.Min(.62f, 3.1f / Mathf.Max(1, count - 1)), thick = Mathf.Min(.13f, step * .55f);
+        var discs = new Renderer[count];
+        for (int d = 0; d < count; d++)
+            discs[d] = Shape(PrimitiveType.Cylinder, p, "Punto " + (d + 1), p.position + Vector3.up * (.78f + d * step), new Vector3(.8f, thick, .8f), Tint(new Color(.55f, .58f, .66f)), false).GetComponent<Renderer>();
+        return discs;
+    }
+
     void CollectWorld(Transform root)
     {
         for (int i = 0; i < 3; i++)
@@ -421,12 +431,13 @@ public sealed class MultiverseHub : MonoBehaviour
             pillars[i] = new ScorePillar
             {
                 Root = p,
-                Discs = Enumerable.Range(1, MultiverseParty.WinScore).Select(d => p.Find("Punto " + d).GetComponent<Renderer>()).ToArray(),
+                Discs = ScoreDiscs(p, MultiverseParty.WinScore),
                 Cap = p.Find("Remate").GetComponent<Renderer>(),
                 Name = p.GetComponentInChildren<TextMesh>()
             };
         }
         if (tower != null) crown = tower.Find("Corona del líder");
+        if (tower != null) foreach (var t in tower.GetComponentsInChildren<TextMesh>()) if (t.text.StartsWith("PRIMERO")) t.text = "PRIMERO\nA " + MultiverseParty.WinScore;
         podium = root.Find("Podio del campeón");
         podiumSpots = new[] { PodiumSpot(0), PodiumSpot(1), PodiumSpot(2) };
     }
@@ -452,6 +463,11 @@ public sealed class MultiverseHub : MonoBehaviour
 
     void SyncAvatars()
     {
+        if (localAvatar != null && party.Local != null)
+        {
+            string myTag = MultiverseParty.PingTag(party.Local);
+            localAvatar.SetLabel(myTag.Length > 0 ? party.Local.Name + "  " + myTag : party.Local.Name, party.ColorOf(party.LocalIndex), false);
+        }
         for (int i = 0; i < party.Members.Count; i++)
         {
             if (i == party.LocalIndex) continue;
@@ -466,7 +482,8 @@ public sealed class MultiverseHub : MonoBehaviour
                 a.Character = m.Character;
                 avatars[i] = a;
             }
-            a.SetLabel(m.Name, party.ColorOf(i), m.Bot);
+            string tag = MultiverseParty.PingTag(m);
+            a.SetLabel(tag.Length > 0 ? m.Name + "  " + tag : m.Name, party.ColorOf(i), m.Bot);
         }
         foreach (var key in avatars.Keys.ToList())
             if (key >= party.Members.Count || key == party.LocalIndex) { if (avatars[key] != null) Destroy(avatars[key].gameObject); avatars.Remove(key); }
@@ -877,6 +894,7 @@ public sealed class MultiverseHub : MonoBehaviour
             pl.Root.gameObject.SetActive(used);
             if (!used) continue;
             var m = party.Members[i]; var c = party.ColorOf(i);
+            if (pl.Discs.Length != MultiverseParty.WinScore) { pl.Discs = ScoreDiscs(pl.Root, MultiverseParty.WinScore); RefreshGoalSigns(); }
             for (int d = 0; d < pl.Discs.Length; d++) SetColor(pl.Discs[d], d < m.Score ? c : new Color(.55f, .58f, .66f), d < m.Score);
             SetColor(pl.Cap, c, true);
             string label = m.Name + (i == party.LocalIndex ? "\n(tú)" : m.Bot ? "\nbot" : "");
@@ -891,6 +909,14 @@ public sealed class MultiverseHub : MonoBehaviour
     }
 
     readonly Dictionary<Renderer, Color> colorCache = new Dictionary<Renderer, Color>();
+    Text boardTitle;
+    void RefreshGoalSigns()
+    {
+        var tower = transform.Find(WorldRoot)?.Find("Torre de puntos"); if (tower == null) return;
+        foreach (var t in tower.GetComponentsInChildren<TextMesh>()) if (t.text.StartsWith("PRIMERO")) t.text = "PRIMERO\nA " + MultiverseParty.WinScore;
+        if (boardTitle != null) boardTitle.text = "MARCADOR · A " + MultiverseParty.WinScore;
+    }
+
     void SetColor(Renderer r, Color c, bool glow)
     {
         if (r == null) return;
@@ -939,7 +965,7 @@ public sealed class MultiverseHub : MonoBehaviour
         var root = new GameObject("Hub UI", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
         var canvas = root.GetComponent<Canvas>(); canvas.renderMode = RenderMode.ScreenSpaceOverlay; canvas.sortingOrder = 10;
         var scaler = root.GetComponent<CanvasScaler>(); scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1280, 720); scaler.matchWidthOrHeight = .5f;
+        scaler.referenceResolution = new Vector2(1280, 720); scaler.matchWidthOrHeight = .5f; scaler.screenMatchMode = UnityEngine.UI.CanvasScaler.ScreenMatchMode.Expand;
         if (EventSystem.current == null) new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule));
         var cream = new Color(1f, .97f, .9f); var gold = new Color(1f, .8f, .3f);
 
@@ -952,13 +978,19 @@ public sealed class MultiverseHub : MonoBehaviour
         phaseInfo = Label("", phase.transform, new Vector2(.5f, .5f), new Vector2(0, -19), new Vector2(540, 26), 15, cream);
 
         var board = Panel("Marcador", root.transform, new Vector2(0, 1), new Vector2(150, -208), new Vector2(270, 226));
-        Label("MARCADOR · A " + MultiverseParty.WinScore, board.transform, new Vector2(.5f, 1), new Vector2(0, -22), new Vector2(250, 30), 19, gold);
+        boardTitle = Label("MARCADOR · A " + MultiverseParty.WinScore, board.transform, new Vector2(.5f, 1), new Vector2(0, -22), new Vector2(250, 30), 19, gold);
         scoreText = Label("", board.transform, new Vector2(.5f, .5f), new Vector2(0, -16), new Vector2(246, 180), 15, cream, TextAnchor.UpperLeft);
         scoreText.lineSpacing = .95f;
 
         uiRoot = root.transform;
         MakeButton("SALIR AL MENÚ", root.transform, new Vector2(1, 1), new Vector2(-92, -32), new Vector2(160, 40), () => party.LeaveToMenu(), 15);
         MakeButton("AJUSTES", root.transform, new Vector2(1, 1), new Vector2(-92, -80), new Vector2(160, 40), () => MultiverseSettingsPanel.Toggle(uiRoot), 15);
+        // 2026-11-21 · copy the room code to paste it in WhatsApp / Discord.
+        copyCodeButton = MakeButton("COPIAR CÓDIGO", root.transform, new Vector2(1, 1), new Vector2(-92, -128), new Vector2(160, 40), () =>
+        {
+            GUIUtility.systemCopyBuffer = party.RoomCode;
+            MultiverseParty.Toast("Código " + party.RoomCode + " copiado · pégalo a tus amigos");
+        }, 15);
         chatFeed = Label("", root.transform, new Vector2(0, 0), new Vector2(170, 345), new Vector2(320, 96), 14, cream, TextAnchor.LowerLeft);
         chatFeed.horizontalOverflow = HorizontalWrapMode.Wrap;
         chatPanel = Panel("Chat rápido", root.transform, new Vector2(1, .5f), new Vector2(-150, 10), new Vector2(270, 430), .95f);
@@ -1010,9 +1042,12 @@ public sealed class MultiverseHub : MonoBehaviour
         RefreshUI();
     }
 
+    Button copyCodeButton;
+
     void RefreshUI()
     {
         if (phaseTitle == null || party == null) return;
+        if (copyCodeButton != null && copyCodeButton.gameObject.activeSelf != party.Online) copyCodeButton.gameObject.SetActive(party.Online);
         var me = party.Local;
         roomInfo.text = party.Online ? "SALA <b>" + party.RoomCode + "</b> · " + (party.IsHost ? "anfitrión" : "en línea") + " · " + party.Members.Count + " jugadores"
                                      : "Sin conexión · " + party.Members.Count + " jugadores";
@@ -1042,8 +1077,9 @@ public sealed class MultiverseHub : MonoBehaviour
             string col = ColorUtility.ToHtmlStringRGB(party.ColorOf(i));
             string voted = party.Phase == PartyPhase.Voting ? (m.Vote >= 0 ? " ✓" : " …") : "";
             sb.Append("<color=#").Append(col).Append(">■ ").Append(m.Name).Append("</color>")
-              .Append(i == party.LocalIndex ? " <size=11>(tú)</size>" : m.Bot ? " <size=11>bot</size>" : "").Append(voted).Append('\n')
-              .Append("<size=13>   <color=#FFD54A>").Append(new string('●', m.Score)).Append("</color><color=#5A6278>").Append(new string('●', MultiverseParty.WinScore - m.Score)).Append("</color></size>\n");
+              .Append(i == party.LocalIndex ? " <size=11>(tú)</size>" : m.Bot ? " <size=11>bot</size>" : "").Append(voted)
+              .Append(party.Online && !m.Bot ? " <size=11>" + MultiverseParty.PingTag(m) + "</size>" : "").Append('\n')
+              .Append("<size=13>   <color=#FFD54A>").Append(new string('●', m.Score)).Append("</color><color=#5A6278>").Append(new string('●', Mathf.Max(0, MultiverseParty.WinScore - m.Score))).Append("</color></size>\n");
         }
         if (party.Phase == PartyPhase.Lobby)
             for (int i = party.Members.Count; i < party.TargetSize; i++) sb.Append("<color=#8890A8>□ plaza libre (bot)</color>\n\n");
@@ -1099,7 +1135,7 @@ public sealed class MultiverseHub : MonoBehaviour
             championTitle.text = w == party.LocalIndex ? "¡ERES EL CAMPEÓN!" : "¡" + party.Members[w].Name.ToUpperInvariant() + " ES EL CAMPEÓN!";
             var cb = new System.Text.StringBuilder();
             string[] medal = { "1º", "2º", "3º", "4º", "5º", "6º" };
-            string[] shortNames = { "Arena", "Zombi", "Carreras", "Código", "Escape" };
+            string[] shortNames = { "Arena", "Zombi", "Carreras", "Código", "Escape", "Rodillos", "Cavar", "Nave", "Volar", "Golf", "Patata", "Granja", "Reparto", "Atrápalo", "Suelo", "Pintura", "Colina", "Memoria" };
             var titles = party.Titles();
             for (int k = 0; k < rank.Count; k++)
             {

@@ -9,6 +9,7 @@ public struct EscapeOrder
     public EscapeInteractable use;
     public bool precise;      // exact spot (plates, tiles, crate pushing): no avoidance or crowd separation
     public float arrive;
+    public bool idle;         // nothing to do (the director may hand this actor a teammate's job at one of its stations)
 
     public static EscapeOrder Go(Vector3 target, float arrive = .6f) => new EscapeOrder { target = target, arrive = arrive };
     public static EscapeOrder Exact(Vector3 target) => new EscapeOrder { target = target, precise = true, arrive = .2f };
@@ -29,6 +30,16 @@ public sealed class EscapeInteractable : MonoBehaviour
     public Func<EscapeActor, bool> canUse;
     public Action<EscapeActor> onUse;
     public Func<EscapeActor, string> promptFor;
+
+    // ---- Co-op (2026-11-16): every puzzle station belongs to one player ("seat"); nobody can solve a room alone.
+    /// <summary>Seat (party member, or slot offline) that runs this station; -1 = anyone.</summary>
+    public int Owner = -1;
+    /// <summary>Never handed to a single player (e.g. the portal generator: whoever carries a cell inserts it).</summary>
+    public bool Shared;
+    /// <summary>Where the owner's coloured light floats, from Point.</summary>
+    public Vector3 markOffset = new Vector3(0f, .4f, 0f);
+    public static Func<EscapeActor, int> SeatOf;
+    public bool Mine(EscapeActor a) => Owner < 0 || a == null || SeatOf == null || SeatOf(a) == Owner;
 
     void OnEnable() { if (!All.Contains(this)) All.Add(this); }
     void OnDisable() => All.Remove(this);

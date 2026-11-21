@@ -12,9 +12,11 @@ public sealed class MultiverseMainMenu : MonoBehaviour
     public Material wood, darkWood, water, brass;
 
     InputField nameField, codeField;
-    Text status, sizeLabel;
+    Text status, sizeLabel, logoSub, rulesText, mapsLabel, orderText, goalText;
+    GameObject mapsPanel;
     Button[] sizeButtons = new Button[3];
-    Button createButton, joinButton, offlineButton;
+    Button createButton, joinButton, offlineButton, roomsButton, publicButton;
+    GameObject roomsPanel; RectTransform roomsList; Text roomsStatus; PartyRoomBrowser browser;
     int size = 4;
     bool busy;
     Transform cameraPivot;
@@ -139,7 +141,9 @@ public sealed class MultiverseMainMenu : MonoBehaviour
             bool sel = i == character;
             stage[i].localScale = Vector3.Lerp(stage[i].localScale, Vector3.one * (sel ? 1.25f : .9f), Time.deltaTime * 8f);
         }
-        if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame && MultiverseSettingsPanel.IsOpen) MultiverseSettingsPanel.Toggle(menuRoot);
+        if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame && roomsPanel != null) CloseRooms();
+        else if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame && mapsPanel != null) CloseMaps();
+        else if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame && MultiverseSettingsPanel.IsOpen) MultiverseSettingsPanel.Toggle(menuRoot);
         if (status != null && !busy && !string.IsNullOrEmpty(MultiverseParty.LastStatus)) { status.text = MultiverseParty.LastStatus; }
     }
 
@@ -150,12 +154,12 @@ public sealed class MultiverseMainMenu : MonoBehaviour
         var root = new GameObject("Menú principal", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
         var canvas = root.GetComponent<Canvas>(); canvas.renderMode = RenderMode.ScreenSpaceOverlay; canvas.sortingOrder = 20;
         var scaler = root.GetComponent<CanvasScaler>(); scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1280, 720); scaler.matchWidthOrHeight = .5f;
+        scaler.referenceResolution = new Vector2(1280, 720); scaler.matchWidthOrHeight = .5f; scaler.screenMatchMode = UnityEngine.UI.CanvasScaler.ScreenMatchMode.Expand;
 
         var logo = Rect("Logo", root.transform, new Vector2(0, 1), new Vector2(330, -110), new Vector2(560, 150));
         var logoImg = logo.gameObject.AddComponent<Image>(); logoImg.color = new Color(Ink.r, Ink.g, Ink.b, .9f);
         Label("MULTIVERSE\nPARTY 3D", logo, new Vector2(0, 14), new Vector2(520, 110), 50, Gold);
-        Label("Fiesta de minijuegos · primero a " + MultiverseParty.WinScore + " puntos gana", logo, new Vector2(0, -54), new Vector2(520, 30), 17, Cream);
+        logoSub = Label("", logo, new Vector2(0, -54), new Vector2(520, 30), 17, Cream);
 
         menuRoot = root.transform;
         var pick = Rect("Tu personaje", root.transform, new Vector2(0, .5f), new Vector2(250, 10), new Vector2(400, 190));
@@ -174,8 +178,8 @@ public sealed class MultiverseMainMenu : MonoBehaviour
         var rules = Rect("Reglas", root.transform, new Vector2(0, 0), new Vector2(330, 120), new Vector2(560, 150));
         rules.gameObject.AddComponent<Image>().color = new Color(Ink.r, Ink.g, Ink.b, .86f);
         Label("CÓMO SE JUEGA", rules, new Vector2(0, 50), new Vector2(520, 30), 20, Gold);
-        Label("1. Crea una sala y comparte el código (o juega sin conexión).\n2. En la plaza votad uno de los 3 minijuegos al azar.\n3. Ganar un minijuego da 1 punto. Al llegar a 5, ¡campeón!",
-            rules, new Vector2(0, -14), new Vector2(530, 96), 15, Cream).alignment = TextAnchor.MiddleLeft;
+        rulesText = Label("", rules, new Vector2(0, -14), new Vector2(530, 96), 15, Cream);
+        rulesText.alignment = TextAnchor.MiddleLeft;
 
         var panel = Rect("Panel", root.transform, new Vector2(1, .5f), new Vector2(-290, 0), new Vector2(490, 590));
         panel.gameObject.AddComponent<Image>().color = new Color(.1f, .16f, .32f, .95f);
@@ -189,22 +193,33 @@ public sealed class MultiverseMainMenu : MonoBehaviour
             int s = 4 + i;
             sizeButtons[i] = Btn(panel, s.ToString(), new Vector2(-110 + i * 110, 132), new Vector2(92, 44), () => SetSize(s));
         }
-        sizeLabel = Label("", panel, new Vector2(0, 98), new Vector2(440, 26), 14, Cream);
+        sizeLabel = Label("", panel, new Vector2(-92, 96), new Vector2(240, 26), 13, Cream);
+        publicButton = Btn(panel, "", new Vector2(132, 96), new Vector2(170, 26), () => { MultiverseParty.PublicRooms = !MultiverseParty.PublicRooms; RefreshPublic(); });
+        publicButton.GetComponentInChildren<Text>().fontSize = 14;
         createButton = Btn(panel, "CREAR SALA EN LÍNEA", new Vector2(0, 58), new Vector2(380, 52), () => Create());
 
         Label("UNIRSE CON CÓDIGO", panel, new Vector2(0, 8), new Vector2(440, 30), 18, Gold);
-        codeField = Field(panel, new Vector2(-70, -34), "CÓDIGO", "", 12);
+        codeField = Field(panel, new Vector2(-122, -34), "CÓDIGO", "", 12);
         codeField.characterValidation = InputField.CharacterValidation.Alphanumeric;
         codeField.onValueChanged.AddListener(v => { var up = v.ToUpperInvariant(); if (up != v) codeField.text = up; });
-        ((RectTransform)codeField.transform).sizeDelta = new Vector2(240, 48);
-        joinButton = Btn(panel, "UNIRSE", new Vector2(130, -34), new Vector2(150, 48), () => Join());
+        ((RectTransform)codeField.transform).sizeDelta = new Vector2(176, 48);
+        joinButton = Btn(panel, "UNIRSE", new Vector2(30, -34), new Vector2(108, 48), () => Join());
+        roomsButton = Btn(panel, "SALAS", new Vector2(150, -34), new Vector2(108, 48), () => OpenRooms());
+        roomsButton.GetComponent<Image>().color = new Color(.45f, .85f, 1f);
+        // 2026-11-21 · after a lost connection the code is already there: one click on UNIRSE to get back in.
+        codeField.text = !string.IsNullOrEmpty(MultiverseParty.RejoinCode) ? MultiverseParty.RejoinCode : MultiverseParty.LastRoom;
 
-        offlineButton = Btn(panel, "JUGAR SIN CONEXIÓN", new Vector2(0, -100), new Vector2(380, 50), () => Offline());
-        Btn(panel, "AJUSTES", new Vector2(-100, -158), new Vector2(180, 40), () => MultiverseSettingsPanel.Toggle(menuRoot));
-        Btn(panel, "SALIR", new Vector2(100, -158), new Vector2(180, 40), Quit);
-        status = Label("", panel, new Vector2(0, -224), new Vector2(460, 64), 15, Cream);
+        offlineButton = Btn(panel, "JUGAR SIN CONEXIÓN", new Vector2(0, -94), new Vector2(380, 48), () => Offline());
+        var maps = Btn(panel, "SELECCIONAR MAPAS", new Vector2(0, -148), new Vector2(380, 42), () => OpenMaps());
+        maps.GetComponent<Image>().color = new Color(.45f, .85f, 1f);
+        mapsLabel = maps.GetComponentInChildren<Text>(); mapsLabel.fontSize = 19;
+        Btn(panel, "AJUSTES", new Vector2(-100, -198), new Vector2(180, 38), () => MultiverseSettingsPanel.Toggle(menuRoot));
+        Btn(panel, "SALIR", new Vector2(100, -198), new Vector2(180, 38), Quit);
+        status = Label("", panel, new Vector2(0, -250), new Vector2(460, 56), 15, Cream);
 
         MultiverseUI.Skin(root, MultiverseUI.Mode.Hub);
+        RefreshPublic();
+        RefreshMode();
         SetSize(size);
         SetCharacter(MultiverseParty.SavedCharacter);
         SetColor(MultiverseParty.SavedColor);
@@ -253,7 +268,7 @@ public sealed class MultiverseMainMenu : MonoBehaviour
             img.color = 4 + i == s ? Gold : new Color(.55f, .62f, .8f);
             sizeButtons[i].transform.localScale = Vector3.one * (4 + i == s ? 1.08f : 1f);
         }
-        sizeLabel.text = "Partida de " + s + " · si faltan amigos, entran bots";
+        sizeLabel.text = "Partida de " + s + " · faltan → bots";
     }
 
     void SaveName() => MultiverseParty.SavedName = nameField.text;
@@ -264,6 +279,77 @@ public sealed class MultiverseMainMenu : MonoBehaviour
         bool ok = await MultiverseParty.StartOnline(true, "", size);
         if (!ok) SetBusy(false, MultiverseParty.LastStatus + "\nPuedes jugar sin conexión mientras tanto.");
     }
+
+    void RefreshPublic()
+    {
+        bool pub = MultiverseParty.PublicRooms;
+        publicButton.GetComponentInChildren<Text>().text = pub ? "SALA VISIBLE" : "SALA PRIVADA";
+        publicButton.GetComponent<Image>().color = pub ? new Color(.5f, .9f, .55f) : new Color(.75f, .75f, .8f);
+    }
+
+    // ------------------------------------------------------------------ open rooms (2026-11-21)
+
+    void OpenRooms()
+    {
+        if (busy || roomsPanel != null) return;
+        if (MultiverseSettingsPanel.IsOpen) MultiverseSettingsPanel.Toggle(menuRoot);
+        var dim = Rect("Salas abiertas", menuRoot, new Vector2(.5f, .5f), Vector2.zero, new Vector2(4000, 3000));
+        dim.gameObject.AddComponent<Image>().color = new Color(0, 0, 0, .6f);
+        roomsPanel = dim.gameObject;
+        var card = Rect("Tarjeta", dim, new Vector2(.5f, .5f), Vector2.zero, new Vector2(720, 560));
+        card.gameObject.AddComponent<Image>().color = new Color(.1f, .16f, .32f, .98f);
+        Label("SALAS ABIERTAS", card, new Vector2(0, 240), new Vector2(660, 44), 32, Gold);
+        roomsStatus = Label("Conectando…", card, new Vector2(0, 202), new Vector2(660, 26), 15, Cream);
+        roomsList = Rect("Lista", card, new Vector2(.5f, .5f), new Vector2(0, -10), new Vector2(660, 380));
+        Btn(card, "CERRAR", new Vector2(0, -235), new Vector2(220, 46), CloseRooms);
+
+        browser = PartyRoomBrowser.Open();
+        browser.Changed += FillRooms;
+        FillRooms();
+    }
+
+    void FillRooms()
+    {
+        if (roomsPanel == null || browser == null) return;
+        for (int i = roomsList.childCount - 1; i >= 0; i--) Destroy(roomsList.GetChild(i).gameObject);
+        roomsStatus.text = browser.Status;
+        int row = 0;
+        foreach (var room in browser.Rooms)
+        {
+            if (row >= 6) break;
+            var r = room;
+            var line = Rect("Sala " + r.Code, roomsList, new Vector2(.5f, 1), new Vector2(0, -32 - row * 62), new Vector2(650, 56));
+            line.gameObject.AddComponent<Image>().color = new Color(1, 1, 1, .07f);
+            bool full = r.Players >= r.Size;
+            string state = r.Playing ? "<color=#FFB060>jugando</color>" : "<color=#7CFC7C>en la sala de espera</color>";
+            var t = Label("<color=#FFD54A>" + r.Code + "</color>  ·  sala de <b>" + r.Host + "</b>\n<size=13>" + r.Players + "/" + r.Size + " personas · " + state + "</size>",
+                line, new Vector2(-80, 0), new Vector2(470, 52), 18, Cream);
+            t.alignment = TextAnchor.MiddleLeft; t.supportRichText = true;
+            var b = Btn(line, full ? "LLENA" : r.Playing ? "ENTRAR" : "UNIRSE", new Vector2(245, 0), new Vector2(140, 42), () => JoinRoom(r.Code));
+            b.interactable = !full && r.Open;
+            row++;
+        }
+        if (browser.Rooms.Count > 6) roomsStatus.text += " · se muestran las 6 primeras";
+    }
+
+    async void JoinRoom(string code)
+    {
+        if (busy) return;
+        codeField.text = code;
+        var b = browser; browser = null;
+        CloseRooms();
+        if (b != null) await b.Close();
+        Join();
+    }
+
+    void CloseRooms()
+    {
+        if (browser != null) { var b = browser; browser = null; _ = b.Close(); }
+        if (roomsPanel != null) Destroy(roomsPanel);
+        roomsPanel = null; roomsList = null; roomsStatus = null;
+    }
+
+    void OnDestroy() { if (browser != null) { var b = browser; browser = null; _ = b.Close(); } }
 
     async void Join()
     {
@@ -296,6 +382,112 @@ public sealed class MultiverseMainMenu : MonoBehaviour
         if (createButton != null) createButton.interactable = !value;
         if (joinButton != null) joinButton.interactable = !value;
         if (offlineButton != null) offlineButton.interactable = !value;
+    }
+
+    // ------------------------------------------------------------------ map selection (2026-11-18)
+
+    string ModeText()
+    {
+        var list = MultiverseParty.ChosenPlaylist; int goal = MultiverseParty.ChosenGoal;
+        string pts = goal + (goal == 1 ? " punto" : " puntos");
+        return list.Count > 0 ? "Mapas elegidos: " + list.Count + " en orden (sin votación) · gana quien llegue a " + pts + "."
+                              : goal != MultiverseParty.DefaultWinScore ? "Votación normal · gana quien llegue a " + pts + "."
+                              : "Modo normal: votación en la plaza · primero a " + pts + ".";
+    }
+
+    void RefreshMode()
+    {
+        int goal = MultiverseParty.ChosenGoal; var list = MultiverseParty.ChosenPlaylist;
+        if (logoSub != null) logoSub.text = "Fiesta de minijuegos · primero a " + goal + (goal == 1 ? " punto" : " puntos") + " gana";
+        if (rulesText != null) rulesText.text = "1. Crea una sala y comparte el código (o juega sin conexión).\n"
+            + (list.Count > 0 ? "2. Se juegan los mapas que elegiste, en tu orden.\n" : "2. En la plaza votad uno de los 3 minijuegos al azar.\n")
+            + "3. Ganar un minijuego da 1 punto. Al llegar a " + goal + ", ¡campeón!";
+        if (mapsLabel != null) mapsLabel.text = list.Count > 0 ? "MAPAS: " + list.Count + " ELEGIDOS · " + goal + " PTS" : goal != MultiverseParty.DefaultWinScore ? "MAPAS: VOTACIÓN · " + goal + " PTS" : "SELECCIONAR MAPAS";
+    }
+
+    void OpenMaps()
+    {
+        if (busy || mapsPanel != null) return;
+        if (MultiverseSettingsPanel.IsOpen) MultiverseSettingsPanel.Toggle(menuRoot);
+        var dim = Rect("Seleccionar mapas", menuRoot, new Vector2(.5f, .5f), Vector2.zero, new Vector2(4000, 3000));
+        dim.gameObject.AddComponent<Image>().color = new Color(0, 0, 0, .6f);
+        mapsPanel = dim.gameObject;
+        var card = Rect("Tarjeta", dim, new Vector2(.5f, .5f), Vector2.zero, new Vector2(1000, 620));
+        card.gameObject.AddComponent<Image>().color = new Color(.1f, .16f, .32f, .98f);
+        Label("SELECCIONAR MAPAS", card, new Vector2(0, 275), new Vector2(900, 44), 32, Gold);
+        Label("Haz clic en los minijuegos en el orden en que queréis jugarlos (se pueden repetir). Si la lista se acaba y nadie ha ganado, vuelve a empezar.",
+            card, new Vector2(0, 238), new Vector2(940, 26), 14, Cream);
+
+        // Games (left).
+        Label("MINIJUEGOS", card, new Vector2(-250, 205), new Vector2(480, 28), 18, Gold);
+        for (int i = 0; i < PartyGames.Count; i++)
+        {
+            int g = i; var info = PartyGames.All[g];
+            var b = Btn(card, info.Title, new Vector2(-408 + (g % 3) * 158, 168 - (g / 3) * 50), new Vector2(150, 42), () => AddMap(g));   // 3 columns: room for 15 games
+            b.GetComponent<Image>().color = Color.Lerp(info.Color, Color.white, .25f);
+            var t = b.GetComponentInChildren<Text>(); t.fontSize = 14; t.resizeTextForBestFit = true; t.resizeTextMinSize = 9; t.resizeTextMaxSize = 14;
+        }
+        // Points (left, bottom).
+        Label("PUNTOS PARA GANAR", card, new Vector2(-250, -150), new Vector2(480, 28), 18, Gold);
+        Btn(card, "−", new Vector2(-370, -195), new Vector2(60, 46), () => SetGoal(MultiverseParty.ChosenGoal - 1));
+        goalText = Label("", card, new Vector2(-250, -195), new Vector2(160, 46), 28, Cream);
+        Btn(card, "+", new Vector2(-130, -195), new Vector2(60, 46), () => SetGoal(MultiverseParty.ChosenGoal + 1));
+
+        // Order (right).
+        Label("ORDEN DE JUEGO", card, new Vector2(255, 205), new Vector2(440, 28), 18, Gold);
+        var box = Rect("Lista", card, new Vector2(.5f, .5f), new Vector2(255, 30), new Vector2(440, 320));
+        box.gameObject.AddComponent<Image>().color = new Color(0, 0, 0, .3f);
+        orderText = Label("", box, Vector2.zero, new Vector2(420, 304), 14, Cream);
+        orderText.alignment = TextAnchor.UpperLeft; orderText.font = MultiverseUI.BodyFont;
+        orderText.resizeTextForBestFit = true; orderText.resizeTextMinSize = 9; orderText.resizeTextMaxSize = 16;
+        Btn(card, "QUITAR ÚLTIMO", new Vector2(145, -150), new Vector2(210, 38), () => { var l = MultiverseParty.ChosenPlaylist; if (l.Count > 0) l.RemoveAt(l.Count - 1); RefreshMaps(); }).GetComponentInChildren<Text>().fontSize = 17;
+        Btn(card, "BORRAR LISTA", new Vector2(365, -150), new Vector2(210, 38), () => { MultiverseParty.ChosenPlaylist.Clear(); RefreshMaps(); }).GetComponentInChildren<Text>().fontSize = 17;
+        Btn(card, "TODOS EN ORDEN", new Vector2(145, -195), new Vector2(210, 38), () => { var l = MultiverseParty.ChosenPlaylist; l.Clear(); for (int g = 0; g < PartyGames.Count; g++) l.Add(g); RefreshMaps(); }).GetComponentInChildren<Text>().fontSize = 17;
+        Btn(card, "MEZCLAR", new Vector2(365, -195), new Vector2(210, 38), () => { var l = MultiverseParty.ChosenPlaylist; for (int i = l.Count - 1; i > 0; i--) { int j = Random.Range(0, i + 1); (l[i], l[j]) = (l[j], l[i]); } RefreshMaps(); }).GetComponentInChildren<Text>().fontSize = 17;
+
+        // Bottom.
+        var normal = Btn(card, "MODO NORMAL", new Vector2(-150, -265), new Vector2(260, 50), () => { MultiverseParty.ChosenPlaylist.Clear(); MultiverseParty.ChosenGoal = MultiverseParty.DefaultWinScore; CloseMaps(); });
+        normal.GetComponent<Image>().color = new Color(.55f, .62f, .8f);
+        Btn(card, "LISTO", new Vector2(150, -265), new Vector2(260, 50), CloseMaps).GetComponent<Image>().color = new Color(.5f, 1f, .55f);
+        MultiverseUI.Skin(mapsPanel, MultiverseUI.Mode.Hub);
+        RefreshMaps();
+    }
+
+    void AddMap(int game)
+    {
+        var l = MultiverseParty.ChosenPlaylist;
+        if (l.Count >= MultiverseParty.MaxPlaylist) { status.text = "Como mucho " + MultiverseParty.MaxPlaylist + " mapas en la lista."; return; }
+        l.Add(game); RefreshMaps();
+    }
+
+    void SetGoal(int goal) { MultiverseParty.ChosenGoal = Mathf.Clamp(goal, MultiverseParty.MinGoal, MultiverseParty.MaxGoal); RefreshMaps(); }
+
+    void RefreshMaps()
+    {
+        var l = MultiverseParty.ChosenPlaylist;
+        if (orderText != null)
+        {
+            if (l.Count == 0) orderText.text = "\n  (vacía)\n\n  Sin lista se juega normal: en la plaza\n  se vota uno de 3 minijuegos al azar.";
+            else
+            {
+                var sb = new System.Text.StringBuilder();
+                for (int i = 0; i < l.Count; i++)
+                {
+                    sb.Append(i + 1).Append(". ").Append(PartyGames.All[l[i]].Title).Append('\n');
+                }
+                orderText.text = sb.ToString();
+            }
+        }
+        if (goalText != null) goalText.text = MultiverseParty.ChosenGoal.ToString();
+        RefreshMode();
+    }
+
+    void CloseMaps()
+    {
+        if (mapsPanel != null) Destroy(mapsPanel);
+        mapsPanel = null; orderText = null; goalText = null;
+        RefreshMode();
+        if (status != null && !busy) status.text = ModeText();
     }
 
     // ------------------------------------------------------------------ helpers

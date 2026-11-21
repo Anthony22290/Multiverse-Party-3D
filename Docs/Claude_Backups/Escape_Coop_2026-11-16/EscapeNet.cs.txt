@@ -1,0 +1,148 @@
+using System.IO;
+using UnityEngine;
+
+/// <summary>
+/// Sala de Escape online (2026-11-12). Every computer builds the same tower from the party seed and runs the
+/// puzzles itself. What one player does with E (or Q, or a keypad) is sent to everybody and replayed on that
+/// player's copy, so all towers stay in step. Each player moves their own explorer; the host moves the bots,
+/// keeps the clock and decides when a room is solved (clients wait for its word before opening a door).
+/// </summary>
+public sealed class EscapeNet : MonoBehaviour
+{
+    const byte ChPose = 50, ChState = 51, ChEvent = 52;
+    const byte EvUse = 1, EvDrop = 2, EvSubmit = 3, EvSolved = 4, EvClueAsk = 5, EvClue = 6;
+
+    EscapeDirector d;
+    bool host;
+    float nextPose, nextState;
+
+    public void Init(EscapeDirector director)
+    {
+        d = director; host = PartyLink.IsHost;
+        PartyLink.Listen(ChPose, OnPose);
+        PartyLink.Listen(ChState, OnState);
+        PartyLink.Listen(ChEvent, OnEvent);
+        PartyLink.MarkReady();
+    }
+
+    void OnDestroy() => PartyLink.Reset();
+
+    EscapeActor ActorOf(int member)
+    {
+        int slot = PartyLink.SlotOfMember(member);
+        return slot >= 0 && slot < d.Actors.Count ? d.Actors[slot] : null;
+    }
+    static int MemberOf(EscapeActor a) => a == null ? -1 : PartyLink.MemberOfSlot(a.Slot);
+
+    void Update()
+    {
+        if (d == null || !PartyLink.Active) return;
+        if (Time.unscaledTime >= nextPose && d.Actors.Count > 0)
+        {
+            nextPose = Time.unscaledTime + 1f / PartyLink.SendRate;
+            int owned = 0;
+            foreach (var a in d.Actors) if (!a.Puppet) owned++;
+            var w = PartyLink.Begin(ChPose);
+            w.Write((byte)owned);
+            foreach (var a in d.Actors)
+                if (!a.Puppet) { w.Write((sbyte)MemberOf(a)); w.Write(a.transform.position); w.Write(a.transform.eulerAngles.y); }
+            PartyLink.SendToAll();
+        }
+        if (host && Time.unscaledTime >= nextState)
+        {
+            nextState = Time.unscaledTime + .2f;
+            var w = PartyLink.Begin(ChState);
+            w.Write((byte)d.State); w.Write(d.Countdown); w.Write(d.Elapsed); w.Write((byte)d.ActiveRoomIndex);
+            PartyLink.SendToAll();
+        }
+    }
+
+    void OnPose(int from, BinaryReader r)
+    {
+        int n = r.ReadByte();
+        for (int i = 0; i < n; i++)
+        {
+            var a = ActorOf(r.ReadSByte());
+            Vector3 p = r.ReadVector3(); float yaw = r.ReadSingle();
+            if (a != null && a.Puppet) a.NetPose.Add(p, Quaternion.Euler(0, yaw, 0));
+        }
+    }
+
+    void OnState(int from, BinaryReader r)
+    {
+        if (host) return;
+        var state = (EscapeDirector.Phase)r.ReadByte(); float countdown = r.ReadSingle(), elapsed = r.ReadSingle(); r.ReadByte();
+        d.ApplyNet(state, countdown, elapsed);
+    }
+
+    // ------------------------------------------------------------------ sending
+
+    public void SendUse(EscapeActor a, EscapeInteractable it)
+    {
+        var w = PartyLink.Begin(ChEvent); w.Write(EvUse); w.Write((sbyte)MemberOf(a)); w.Write(it.NetId); PartyLink.SendToAll();
+    }
+    public void SendDrop(EscapeActor a, Vector3 at)
+    {
+        var w = PartyLink.Begin(ChEvent); w.Write(EvDrop); w.Write((sbyte)MemberOf(a)); w.Write(at); PartyLink.SendToAll();
+    }
+    public void SendSubmit(EscapeActor a, int room, string code)
+    {
+        var w = PartyLink.Begin(ChEvent); w.Write(EvSubmit); w.Write((sbyte)MemberOf(a)); w.Write((byte)room); w.Write(code ?? ""); PartyLink.SendToAll();
+    }
+    public void SendSolved(int room, EscapeActor by)
+    {
+        var w = PartyLink.Begin(ChEvent); w.Write(EvSolved); w.Write((sbyte)MemberOf(by)); w.Write((byte)room); PartyLink.SendToAll();
+    }
+    public void AskClue()
+    {
+        var w = PartyLink.Begin(ChEvent); w.Write(EvClueAsk); w.Write((sbyte)PartyLink.LocalMember); PartyLink.SendToHost();
+    }
+    public void SendClue(int room, int shown)
+    {
+        var w = PartyLink.Begin(ChEvent); w.Write(EvClue); w.Write((sbyte)-1); w.Write((byte)room); w.Write((byte)shown); PartyLink.SendToAll();
+    }
+
+    // ------------------------------------------------------------------ receiving
+
+    void OnEvent(int from, BinaryReader r)
+    {
+        byte type = r.ReadByte();
+        var a = ActorOf(r.ReadSByte());
+        switch (type)
+        {
+            case EvUse:
+            {
+                var it = EscapeInteractable.ById(r.ReadInt32());
+                if (a != null && a.Puppet && it != null) a.NetFire(it);
+                break;
+            }
+            case EvDrop:
+            {
+                var at = r.ReadVector3();
+                if (a != null && a.Puppet) a.DropAt(at);
+                break;
+            }
+            case EvSubmit:
+            {
+                int room = r.ReadByte(); string code = r.ReadString();
+                if (a != null && a.Puppet && d.Rooms != null && room < d.Rooms.Length) d.Rooms[room].KeypadSubmit(code, a);
+                break;
+            }
+            case EvSolved:
+            {
+                int room = r.ReadByte();
+                if (!host) d.NetSolve(room, a);
+                break;
+            }
+            case EvClueAsk:
+                if (host) d.RequestClue();
+                break;
+            case EvClue:
+            {
+                int room = r.ReadByte(), shown = r.ReadByte();
+                if (!host) d.NetClue(room, shown);
+                break;
+            }
+        }
+    }
+}

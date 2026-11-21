@@ -113,7 +113,7 @@ public sealed class CrazyKartController : MonoBehaviour
             Vector3 target = director.GetWaypointPosition(NextCheckpoint);
             Vector3 tangent = (director.GetWaypointPosition(NextCheckpoint + 1) - target).normalized;
             int lane = 0, slot = 0; for (int i=0;i<director.Karts.Count;i++) if(director.Karts[i]==this) { lane=i%3-1; slot=i; }
-            if (botSkill < 0) botSkill = new[] { .965f, .985f, 1f, .975f }[slot % 4];
+            if (botSkill < 0) botSkill = new[] { .965f, .985f, 1f, .975f }[slot % 4] + (MultiverseSettings.BotLevel == 0 ? -.06f : MultiverseSettings.BotLevel == 2 ? .02f : 0f);
             Vector3 sideDir = Vector3.Cross(Vector3.up, tangent); sideDir.y = 0; sideDir.Normalize();
             target += sideDir * lane * 1.5f;
             // Obstacle on the line to the target (moving ones judged where they will be): aim beside it.

@@ -6,16 +6,31 @@ using UnityEngine.Rendering.Universal;
 using UnityEngine.SceneManagement;
 
 /// <summary>
-/// "Torre del Multiverso": cooperative first-person escape room for 4–6 players (local player + bot teammates).
-/// Six rooms drawn from a pool of ten (the portal is always last); solving a room opens the door to the next one.
-/// Clues are not given away: each room reveals vague clues over time, or earlier with H at a time penalty.
-/// Flow: countdown → play (16 min) → results. In a party match the most useful player earns the point if the team escapes.
+/// "Torre del Multiverso" — CARRERA (2026-11-17). Every player escapes alone from their own copy of the tower:
+/// same rooms in the same order for everybody, but each copy has its own solutions (nobody can shout the code).
+/// Each computer builds and plays only its own copy; online, the computers just share progress (EscapeNet).
+/// Whoever reaches the end first wins the party point; everybody is told the places as players arrive, and the
+/// rest keep going until they finish too. Stuck for 1:30 in a room? A helper bot walks in and solves it.
+/// Party members played by the AI race as "ghosts": no body, only a simulated time per room.
 /// </summary>
 public sealed class EscapeDirector : MonoBehaviour
 {
     public enum Phase { Lobby, Countdown, Playing, Won, Lost }
 
     public const float RoomLength = 22f, RoomWidth = 20f;
+    /// <summary>Seconds stuck in a room before the helper bot comes in.</summary>
+    public const float HelperAfter = 90f;
+    /// <summary>If the helper has not solved the room this many seconds later, the door opens anyway.</summary>
+    public const float HelperGiveUp = 35f;
+    /// <summary>Once somebody finishes, the others have at most this long to finish too.</summary>
+    public const float FinishGrace = 360f;
+    /// <summary>Seconds the final ranking stays up before the party moves on.</summary>
+    public const float EndDelay = 6f;
+    /// <summary>Asking for a clue (H) freezes you this long.</summary>
+    public const float ClueFreeze = 10f;
+    /// <summary>Party members played by the AI race as ghosts (simulated times). False: only people race.</summary>
+    public static bool GhostRivals = true;
+
     public static string[] Names = { "Tú", "Coral", "Menta", "Rayo", "Lila", "Ámbar" };
     static string[] Models = { "Anne", "Henry", "Mako", "Captain_Barbarossa", "Anne", "Henry" };
     public static Color[] Colors =
@@ -23,15 +38,17 @@ public sealed class EscapeDirector : MonoBehaviour
         new Color(.3f, .85f, 1f), new Color(1f, .38f, .48f), new Color(.38f, 1f, .62f),
         new Color(1f, .86f, .28f), new Color(.76f, .5f, 1f), new Color(1f, .6f, .22f)
     };
+    static readonly Color HelperTint = new Color(1f, .86f, .28f);
 
-    [Tooltip("Total time for the whole tower.")] public float totalSeconds = 960f;
+    [Tooltip("Kept for tests; the race has no time limit.")] public float totalSeconds = 3600f;
     [Tooltip("Tests: a bot also drives the local player.")] public bool AutoHuman;
-    [Tooltip("Multiplies how long bots wait before finishing a puzzle for the player.")] public float AssistScale = 1f;
+    [Tooltip("Multiplies how long bots wait before finishing a puzzle (0 while the helper is in the room).")] public float AssistScale = 1f;
 
     public Phase State { get; private set; } = Phase.Lobby;
     public bool Running => State == Phase.Playing;
     public bool InputFree => Running && (HUD == null || HUD.InputFree);
     public float Countdown { get; private set; }
+    /// <summary>Your own time (stops when you reach the end).</summary>
     public float Elapsed { get; private set; }
     public bool NewRecord { get; private set; }
     public float BestTime { get; private set; }
@@ -49,28 +66,50 @@ public sealed class EscapeDirector : MonoBehaviour
     public EscapeHUD HUD { get; private set; }
     public EscapeLevel Level { get; private set; }
     public float RoomTime => Elapsed - roomStartedAt;
-    // ---- online party (2026-11-12): same tower everywhere, uses replayed on every computer (EscapeNet).
     public EscapeNet Net { get; private set; }
-    public bool IsClient => Net != null && PartyLink.IsClient;
-    /// <summary>True while a client applies a solve decided by the host.</summary>
-    public bool NetSolving { get; private set; }
-    float roomStartedAt, noticeUntil;
+    /// <summary>Every computer runs its own tower: nothing waits for a host decision any more.</summary>
+    public bool IsClient => false;
+    public bool NetSolving => false;
+    float roomStartedAt, noticeUntil, assistSaved = 1f, helperLeaveAt = -1f;
+
+    // ------------------------------------------------------------------ race state
+
+    public sealed class Racer
+    {
+        public int Slot, Member;
+        public string Name;
+        public Color Color;
+        public bool Local, Ghost, Gone, Finished;
+        public int Rooms;
+        public float Time;
+        public float[] Splits;   // ghosts: race time at which each room is done
+    }
+    public readonly List<Racer> Racers = new();
+    public Racer Me { get; private set; }
+    /// <summary>Time since the start for everybody (keeps running after you finish).</summary>
+    public float RaceClock { get; private set; }
+    public bool RaceStarted { get; private set; }
+    public bool RaceOver { get; private set; }
+    public EscapeActor HelperBot { get; private set; }
+    /// <summary>Seconds until the helper comes into the active room (-1: already here or not applicable).</summary>
+    public float HelperIn => Running && HelperBot == null && ActiveRoom != null && !ActiveRoom.Solved ? Mathf.Max(0f, HelperAfter - RoomTime) : -1f;
+    float firstFinishAt = -1f, endAt = -1f;
 
     void Start()
     {
         Application.targetFrameRate = 60;
         Application.runInBackground = true;
-        PlayerCount = Mathf.Clamp(PlayerPrefs.GetInt("EscapePlayers", 4), 4, 6);
+        PlayerCount = Mathf.Clamp(PlayerPrefs.GetInt("EscapePlayers", 4), 1, 6);
         EscapeAudio.Ensure();
         if (GetComponent<EscapeAtmosphere>() == null) gameObject.AddComponent<EscapeAtmosphere>();
         SetupEnvironment();
 
         EscapeInteractable.ResetIds();
-        PartyLink.SeedRandom(21);   // online: every computer draws and builds the same rooms
+        EscapeInteractable.SeatOf = null;   // no owned stations: everything is yours
+        PartyLink.SeedRandom(21);           // online: same rooms in the same order on every computer…
         Level = gameObject.AddComponent<EscapeLevel>();
-        Rooms = Level.Build(this);
+        Rooms = Level.Build(this);          // …but SeedPuzzles() gives each player their own solutions
         SolvedAt = new float[Rooms.Length];
-        totalSeconds = Mathf.Max(totalSeconds, Rooms.Length * 165f);   // ~2¾ min per room
 
         var cam = Camera.main;
         if (cam == null)
@@ -90,6 +129,14 @@ public sealed class EscapeDirector : MonoBehaviour
         HUD.Director = this;
         EscapeAudio.Music("music");
         if (PartyLink.Active) { Net = gameObject.AddComponent<EscapeNet>(); Net.Init(this); }
+    }
+
+    /// <summary>Called by EscapeLevel once the room types are drawn: from here on the randomness is this player's own.</summary>
+    public void SeedPuzzles() => Seed(21);
+
+    static void Seed(int salt)
+    {
+        if (PartyLink.Active) Random.InitState(unchecked(PartyLink.Seed * 31 + salt + 7919 * (PartyLink.LocalMember + 1)));
     }
 
     void SetupEnvironment()
@@ -121,37 +168,68 @@ public sealed class EscapeDirector : MonoBehaviour
 
     // ------------------------------------------------------------------ flow
 
+    /// <param name="players">Outside a party match: you + (players − 1) ghost rivals. In a match: the party roster.</param>
     public void StartGame(int players)
     {
         if (State != Phase.Lobby) return;
-        PlayerCount = Mathf.Clamp(players, 4, 6);
-        PlayerPrefs.SetInt("EscapePlayers", PlayerCount);
-        for (int i = 0; i < PlayerCount; i++)
-        {
-            if (i == 0 && MultiverseParty.InMatch)
-            {
-                var roster = MultiverseParty.CurrentRoster();
-                for (int r = 0; r < Mathf.Min(roster.Count, Names.Length); r++) { Names[r] = roster.Names[r]; Colors[r] = roster.Colors[r]; Models[r] = PartyGames.ModelName(roster.Characters[r]); }
-            }
-            var go = new GameObject(i == 0 ? "Jugador (tú)" : "Compañero " + Names[i]);
-            go.transform.SetPositionAndRotation(SpawnPoint(Rooms[0], PartyLink.Active ? Mathf.Max(0, PartyLink.MemberOfSlot(i)) : i), Quaternion.identity);
-            var a = go.AddComponent<EscapeActor>();
-            a.Initialize(this, i, i == 0, Names[i], Models[i % Models.Length], Colors[i]);
-            if (PartyLink.IsPuppet(i)) a.SetPuppet();
-            else if (i != 0 || AutoHuman) go.AddComponent<EscapeBot>();
-            Actors.Add(a);
-            if (i == 0) Human = a;
-        }
-        // Bot plans hand out jobs by role ("the first bot works the jugs"); online a slot may belong to a person.
-        int role = 1;
-        foreach (var a in Actors) if (a != Human && !a.Puppet) a.Role = role++;
-        foreach (var a in Actors) if (a.Puppet) a.Role = role++;
-        if (Human != null) Human.Role = 0;
-        PartyLink.SeedRandom(22);
+        BuildRacers(players);
+
+        var go = new GameObject("Jugador (tú)");
+        go.transform.SetPositionAndRotation(SpawnPoint(Rooms[0], 1), Quaternion.identity);
+        var a = go.AddComponent<EscapeActor>();
+        a.Initialize(this, 0, true, Names[0], Models[0], Colors[0]);
+        if (AutoHuman) go.AddComponent<EscapeBot>();
+        Actors.Add(a);
+        Human = a;
+        Human.Role = AutoHuman ? 1 : 0;   // tests: the automatic player takes the job bots plans give to role 1
+
+        Seed(22);
         foreach (var r in Rooms) r.OnTeamReady();
         State = Phase.Countdown;
         Countdown = 3.5f;
         View?.Snap();
+    }
+
+    void BuildRacers(int players)
+    {
+        Racers.Clear();
+        if (MultiverseParty.InMatch)
+        {
+            var roster = MultiverseParty.CurrentRoster();
+            PlayerCount = roster.Count;
+            for (int s = 0; s < roster.Count; s++)
+            {
+                bool person = s == 0 || (roster.Humans != null && s < roster.Humans.Length && roster.Humans[s]);
+                if (s < Names.Length) { Names[s] = roster.Names[s]; Colors[s] = roster.Colors[s]; Models[s] = PartyGames.ModelName(roster.Characters[s]); }
+                if (!person && !GhostRivals) continue;
+                // Offline every other member is a bot. Online other people race on their own computers.
+                Racers.Add(new Racer { Slot = s, Member = roster.Members[s], Name = roster.Names[s], Color = roster.Colors[s], Local = s == 0, Ghost = !person });
+            }
+        }
+        else
+        {
+            PlayerCount = Mathf.Clamp(players, 1, 6);
+            PlayerPrefs.SetInt("EscapePlayers", PlayerCount);
+            for (int s = 0; s < PlayerCount; s++)
+                Racers.Add(new Racer { Slot = s, Member = s, Name = s == 0 ? "Tú" : Names[s], Color = Colors[s], Local = s == 0, Ghost = s != 0 });
+        }
+        Me = Racers.FirstOrDefault(r => r.Local);
+
+        // Ghost times: same on every computer online (party seed), 65–110 s per room, the portal is quicker.
+        int baseSeed = PartyLink.Active ? PartyLink.Seed : System.Environment.TickCount;
+        foreach (var r in Racers)
+        {
+            if (!r.Ghost) continue;
+            var rng = new System.Random(unchecked(baseSeed * 17 + r.Member * 101 + 5));
+            r.Splits = new float[Rooms.Length];
+            float t = 0f;
+            for (int i = 0; i < Rooms.Length; i++)
+            {
+                bool last = i == Rooms.Length - 1;
+                t += last ? 35f + (float)rng.NextDouble() * 25f : 65f + (float)rng.NextDouble() * 45f;
+                r.Splits[i] = t;
+            }
+        }
     }
 
     public Vector3 SpawnPoint(EscapeRoom room, int slot) =>
@@ -159,31 +237,28 @@ public sealed class EscapeDirector : MonoBehaviour
 
     void Update()
     {
-        if (IsClient) ClientTick();
-        else if (State == Phase.Countdown && Net != null && !PartyLink.AllReady) { Notice = PartyLink.WaitingText; noticeUntil = Time.time + .5f; }
-        else if (State == Phase.Countdown)
+        if (State == Phase.Countdown)
         {
-            float before = Countdown;
-            Countdown -= Time.deltaTime;
-            if (Mathf.CeilToInt(before) != Mathf.CeilToInt(Countdown) && Countdown > 0f) EscapeAudio.PlayUI("count");
-            if (Countdown <= 0f)
+            if (Net != null && !PartyLink.IsHost) { if (Countdown > 3.4f) { Notice = PartyLink.WaitingText; noticeUntil = Time.time + .5f; } }   // the host starts everybody
+            else if (Net != null && !PartyLink.AllReady) { Notice = PartyLink.WaitingText; noticeUntil = Time.time + .5f; }
+            else
             {
-                State = Phase.Playing;
-                roomStartedAt = 0f;
-                EscapeAudio.PlayUI("go");
-                Notify("¡A ESCAPAR DE LA TORRE!");
-                PartyLink.SeedRandom(100 + ActiveRoomIndex);
-                ActiveRoom?.OnActivated();
-                if (Net != null) Net.SendSolved(255, null);   // tells clients the tower is running (255 = start)
+                float before = Countdown;
+                Countdown -= Time.deltaTime;
+                if (Mathf.CeilToInt(before) != Mathf.CeilToInt(Countdown) && Countdown > 0f) EscapeAudio.PlayUI("count");
+                if (Countdown <= 0f) StartRunning();
             }
         }
-        else if (State == Phase.Playing)
+        if (RaceStarted && !RaceOver) { RaceClock += Time.deltaTime; GhostTick(); }
+        if (State == Phase.Playing)
         {
             Elapsed += Time.deltaTime;
-            foreach (var a in Actors)
-                if (!a.Puppet && a.transform.position.y < -3f) Respawn(a, "¡Al vacío! Vuelves a la entrada de la sala");
-            if (Remaining <= 0f) Lose();
+            for (int i = Actors.Count - 1; i >= 0; i--)
+                if (Actors[i] != null && Actors[i].transform.position.y < -3f) Respawn(Actors[i], Actors[i] == Human ? "¡Al vacío! Vuelves a la entrada de la sala" : null);
+            HelperTick();
         }
+        if (helperLeaveAt > 0f && Time.time >= helperLeaveAt) RemoveHelper();
+        RaceTick();
         if (Rooms != null) foreach (var r in Rooms) r.Tick();
         if (Notice.Length > 0 && Time.time > noticeUntil) Notice = "";
 
@@ -191,10 +266,33 @@ public sealed class EscapeDirector : MonoBehaviour
         if (k != null && k.mKey.wasPressedThisFrame && (HUD == null || !HUD.KeypadOpen)) EscapeAudio.ToggleMusic();
     }
 
+    const string StartText = "¡A ESCAPAR!  ·  Cada uno en su torre: ¡el primero en salir gana!";
+
+    void StartRunning()
+    {
+        if (State != Phase.Countdown) return;
+        State = Phase.Playing;
+        RaceStarted = true;
+        roomStartedAt = 0f;
+        EscapeAudio.PlayUI("go");
+        Notify(StartText);
+        Seed(100 + ActiveRoomIndex);
+        ActiveRoom?.OnActivated();
+        Net?.SendProgress();
+    }
+
+    /// <summary>Client: countdown and start signal from the host.</summary>
+    public void ApplyNet(bool started, float countdown)
+    {
+        if (State != Phase.Countdown) return;
+        if (started) { StartRunning(); return; }
+        if (Mathf.CeilToInt(Countdown) != Mathf.CeilToInt(countdown) && countdown > 0f && countdown < 3.4f) EscapeAudio.PlayUI("count");
+        Countdown = countdown;
+    }
+
     public void OnRoomSolved(EscapeRoom room, EscapeActor by)
     {
         int i = room.Index;
-        if (Net != null && PartyLink.IsHost) Net.SendSolved(i, by);
         SolvedAt[i] = Elapsed;
         if (by != null) by.Solves++;
         EscapeAudio.PlayUI("success");
@@ -206,14 +304,17 @@ public sealed class EscapeDirector : MonoBehaviour
             MultiverseFX.Rainbow(exit, 40, 9); MultiverseFX.Ring(room.W(new Vector3(0, .05f, EscapeRoom.Length * .5f - 2f)), 5, new Color(1, .85f, .3f), .7f);
             MultiverseFX.FloatText(exit + Vector3.up * 1.5f, "¡SALA " + (i + 1) + " SUPERADA!", new Color(1, .85f, .3f), 1.1f, 2f);
         }
+        if (Me != null) Me.Rooms = RoomsSolved;
+        if (HelperBot != null) helperLeaveAt = Time.time + 1.2f;   // the helper waves and leaves
         if (i < Rooms.Length - 1)
         {
             Level.OpenDoor(i);
-            Notify($"¡SALA {i + 1} SUPERADA!" + (by != null ? "  ·  " + (by.IsHuman ? "¡la has resuelto tú!" : by.DisplayName) : ""));
+            Notify(by != null && by.Helper ? $"El ayudante abrió la sala {i + 1}  ·  ¡Sigue!" : $"¡SALA {i + 1} SUPERADA!  ·  Adelante");
             ActiveRoomIndex = i + 1;
             roomStartedAt = Elapsed;
-            PartyLink.SeedRandom(100 + i + 1);
+            Seed(100 + i + 1);
             Rooms[i + 1].OnActivated();
+            Net?.SendProgress();
         }
         else Win();
     }
@@ -225,99 +326,159 @@ public sealed class EscapeDirector : MonoBehaviour
         ActiveRoomIndex = Rooms.Length;
         EscapeAudio.PlayUI("win");
         EscapeAudio.Duck(6f);
-        // Best escape time is kept per team size.
-        string key = "SalaEscape_Mejor_" + Actors.Count;
+        string key = "SalaEscape_MejorCarrera_" + Rooms.Length;
         float best = PlayerPrefs.GetFloat(key, 0);
         NewRecord = best <= 0 || Elapsed < best; BestTime = NewRecord ? Elapsed : best;
-        if (NewRecord) { PlayerPrefs.SetFloat(key, Elapsed); PlayerPrefs.Save(); EscapeAudio.PlayUI("record", .8f); Notify("¡NUEVO RÉCORD! " + Mathf.FloorToInt(Elapsed / 60) + ":" + ((int)Elapsed % 60).ToString("00")); }
+        if (NewRecord) { PlayerPrefs.SetFloat(key, Elapsed); PlayerPrefs.Save(); EscapeAudio.PlayUI("record", .8f); }
+        if (Me != null) { Me.Finished = true; Me.Time = Elapsed; Me.Rooms = Rooms.Length; OnFinished(Me); }
+        Net?.SendProgress();
         HUD?.ShowResults();
-        var mvp = MostValuable;
-        PartyLink.Finish(mvp != null ? mvp.Slot : -1);
     }
 
-    void Lose()
-    {
-        if (State != Phase.Playing) return;
-        State = Phase.Lost;
-        EscapeAudio.PlayUI("lose");
-        EscapeAudio.Duck(5f);
-        HUD?.ShowResults();
-        PartyLink.Finish(-1);
-    }
-
-    /// <summary>H: reveal the next clue of the active room now, at a time penalty.</summary>
+    /// <summary>H: reveal the next clue of the active room now; you stay frozen for a few seconds.</summary>
     public void RequestClue()
     {
         var room = ActiveRoom;
         if (!Running || room == null) return;
-        if (IsClient) { Net.AskClue(); return; }   // the host reveals it for the whole team
         if (room.CluesShown >= room.Clues.Length) { Notify("No quedan más pistas en esta sala"); return; }
         if (!room.CanRequestClue) { Notify("Observa la sala un poco más antes de pedir una pista"); return; }
         room.RequestClue();
-        Elapsed += EscapeRoom.CluePenalty;
+        Human?.Stun(ClueFreeze);
         EscapeAudio.PlayUI("beep", .8f);
-        Notify("PISTA " + room.CluesShown + "  ·  −" + EscapeRoom.CluePenalty.ToString("0") + " s");
-        if (Net != null) Net.SendClue(room.Index, room.CluesShown);
+        Notify("PISTA " + room.CluesShown + "  ·  " + ClueFreeze.ToString("0") + " s sin moverte");
     }
 
-    // ------------------------------------------------------------------ online (2026-11-12)
+    // ------------------------------------------------------------------ helper bot (1:30 stuck in a room)
 
-    void ClientTick()
+    void HelperTick()
     {
-        if (State != Phase.Playing) return;
-        Elapsed += Time.deltaTime;
-        if (Human != null && Human.transform.position.y < -3f) Respawn(Human, "¡Al vacío! Vuelves a la entrada de la sala");
+        var room = ActiveRoom;
+        if (room == null || room.Solved) return;
+        if (HelperBot == null && RoomTime >= HelperAfter) SpawnHelper(room);
+        else if (HelperBot != null && helperLeaveAt < 0f && RoomTime >= HelperAfter + HelperGiveUp) room.ForceSolve(HelperBot);
     }
 
-    /// <summary>Client: clock and phase from the host.</summary>
-    public void ApplyNet(Phase state, float countdown, float elapsed)
+    void SpawnHelper(EscapeRoom room)
     {
-        if (Actors.Count == 0) return;
-        if (State == Phase.Countdown && state == Phase.Countdown && Mathf.CeilToInt(Countdown) != Mathf.CeilToInt(countdown) && countdown > 0f && countdown < 3.4f) EscapeAudio.PlayUI("count");
-        Countdown = countdown;
-        if (state == Phase.Countdown && State == Phase.Countdown && countdown > 3.4f) { Notice = PartyLink.WaitingText; noticeUntil = Time.time + .5f; }
-        if (Mathf.Abs(Elapsed - elapsed) > .35f) Elapsed = elapsed;
-        if (state == State) return;
-        if (state == Phase.Playing && State == Phase.Countdown) StartRunning();
-        else if (state == Phase.Lost) { if (State == Phase.Countdown) StartRunning(); Lose(); }
+        var go = new GameObject("Ayudante");
+        go.transform.SetPositionAndRotation(SpawnPoint(room, 2), Quaternion.identity);
+        var a = go.AddComponent<EscapeActor>();
+        a.Initialize(this, 1, false, "Ayudante", "Captain_Barbarossa", HelperTint);
+        a.Helper = true;
+        a.Role = Human != null && Human.Role == 1 ? 2 : 1;
+        go.AddComponent<EscapeBot>();
+        Actors.Add(a);
+        HelperBot = a;
+        helperLeaveAt = -1f;
+        assistSaved = AssistScale; AssistScale = 0f;   // no waiting: it solves straight away
+        MultiverseFX.Ring(go.transform.position + Vector3.up * .05f, 3, HelperTint, .6f);
+        EscapeAudio.PlayUI("beep", .9f);
+        Notify("1:30 en esta sala  ·  ¡Llega un AYUDANTE a resolverla!");
     }
 
-    void StartRunning()
+    void RemoveHelper()
     {
-        if (State != Phase.Countdown) return;
-        State = Phase.Playing;
-        roomStartedAt = 0f;
-        EscapeAudio.PlayUI("go");
-        Notify("¡A ESCAPAR DE LA TORRE!");
-        PartyLink.SeedRandom(100 + ActiveRoomIndex);
-        ActiveRoom?.OnActivated();
+        helperLeaveAt = -1f;
+        if (HelperBot == null) return;
+        Actors.Remove(HelperBot);
+        MultiverseFX.Ring(HelperBot.transform.position + Vector3.up * .05f, 3, HelperTint, .5f);
+        Destroy(HelperBot.gameObject);
+        HelperBot = null;
+        AssistScale = assistSaved;
     }
 
-    /// <summary>Client: the host solved room <paramref name="index"/> (255 = the tower just started).</summary>
-    public void NetSolve(int index, EscapeActor by)
+    // ------------------------------------------------------------------ race
+
+    public static string Clock(float t) => $"{Mathf.FloorToInt(t / 60f)}:{Mathf.FloorToInt(t % 60f):00}";
+
+    /// <summary>Place among those who finished (by time, the same on every computer).</summary>
+    public int Place(Racer r) => r == null || !r.Finished ? 0 : 1 + Racers.Count(o => o != r && o.Finished && o.Time < r.Time);
+
+    public List<Racer> Ranking => Racers.OrderBy(r => r.Finished ? 0 : 1).ThenBy(r => r.Finished ? r.Time : 0f)
+        .ThenByDescending(r => r.Rooms).ThenBy(r => r.Slot).ToList();
+
+    void GhostTick()
     {
-        if (index == 255) { StartRunning(); return; }
-        if (Rooms == null || index < 0 || index >= Rooms.Length || Rooms[index].Solved) return;
-        if (State == Phase.Countdown) StartRunning();
-        NetSolving = true;
-        try { Rooms[index].NetSolve(by); }
-        finally { NetSolving = false; }
+        foreach (var r in Racers)
+        {
+            if (!r.Ghost || r.Finished || r.Splits == null) continue;
+            int done = 0;
+            while (done < r.Splits.Length && r.Splits[done] <= RaceClock) done++;
+            r.Rooms = done;
+            if (done >= r.Splits.Length) { r.Finished = true; r.Time = r.Splits[r.Splits.Length - 1]; OnFinished(r); }
+        }
     }
 
-    public void NetClue(int index, int shown)
+    /// <summary>Online: another player's progress.</summary>
+    public void OnRemoteProgress(int member, int rooms, bool finished, float time)
     {
-        if (Rooms == null || index < 0 || index >= Rooms.Length) return;
-        Rooms[index].ForceClues(shown);
-        EscapeAudio.PlayUI("beep", .8f);
-        Notify("PISTA " + shown + "  ·  −" + EscapeRoom.CluePenalty.ToString("0") + " s");
+        var r = Racers.Find(x => !x.Local && !x.Ghost && x.Member == member);
+        if (r == null) return;
+        r.Rooms = Mathf.Max(r.Rooms, rooms);
+        if (finished && !r.Finished) { r.Finished = true; r.Time = time; r.Rooms = Rooms.Length; OnFinished(r); }
     }
 
-    /// <summary>A keypad code typed (or chosen by a bot) here: try it here and replay it on the other computers.</summary>
-    public bool NetSubmit(EscapeRoom room, string code, EscapeActor a)
+    void OnFinished(Racer r)
     {
-        if (Net != null && a != null && !a.Puppet) Net.SendSubmit(a, room.Index, code);
-        return room.KeypadSubmit(code, a);
+        if (firstFinishAt < 0f) firstFinishAt = RaceClock;
+        int p = Place(r);
+        string t = Clock(r.Time);
+        if (r.Local) Notify(p == 1 ? $"¡PRIMER LUGAR!  ·  {t}" : $"¡ESCAPASTE!  ·  {p}.º lugar  ·  {t}");
+        else
+        {
+            Notify(p == 1 ? $"¡{r.Name.ToUpperInvariant()} LLEGA EN PRIMER LUGAR!  ·  {t}" : $"{r.Name} termina en {p}.º lugar  ·  {t}");
+            EscapeAudio.PlayUI(p == 1 ? "record" : "beep", .6f);
+        }
     }
+
+    void RaceTick()
+    {
+        if (!RaceStarted || RaceOver) return;
+        if (Net != null)
+            foreach (var r in Racers) if (!r.Local && !r.Ghost && !PartyLink.IsHumanMember(r.Member)) r.Gone = true;   // left the room
+        if (Net != null && !PartyLink.IsHost) return;   // the host decides when the race ends
+        if (endAt < 0f)
+        {
+            bool everybody = Racers.All(r => r.Ghost || r.Gone || r.Finished);
+            bool late = firstFinishAt >= 0f && RaceClock - firstFinishAt > FinishGrace;
+            if (everybody || late) endAt = RaceClock + EndDelay;
+        }
+        else if (RaceClock >= endAt) EndRace(Racers.Where(r => r.Finished).OrderBy(r => r.Time).FirstOrDefault());
+    }
+
+    void EndRace(Racer winner)
+    {
+        if (RaceOver) return;
+        if (Net != null && PartyLink.IsHost) Net.SendEnd(winner != null ? winner.Member : -1);
+        Finalize(winner);
+    }
+
+    /// <summary>Client: the host closed the race.</summary>
+    public void OnRaceOver(int winnerMember)
+    {
+        if (RaceOver) return;
+        Finalize(Racers.Find(r => r.Member == winnerMember));
+    }
+
+    void Finalize(Racer winner)
+    {
+        RaceOver = true;
+        if (State == Phase.Playing || State == Phase.Countdown)
+        {
+            State = Phase.Lost;
+            RemoveHelper();
+            EscapeAudio.PlayUI("lose");
+        }
+        HUD?.ShowResults();
+        if (!MultiverseParty.InMatch) return;
+        if (Net != null) { if (PartyLink.IsHost) PartyLink.FinishMember(winner != null ? winner.Member : -1); else PartyLink.Finish(-1); }
+        else PartyLink.Finish(winner != null ? winner.Slot : -1);
+    }
+
+    // ------------------------------------------------------------------ helpers used by rooms, actors and the HUD
+
+    /// <summary>A keypad code typed (or chosen by a bot).</summary>
+    public bool NetSubmit(EscapeRoom room, string code, EscapeActor a) => room.KeypadSubmit(code, a);
 
     public void Notify(string text)
     {
@@ -326,18 +487,17 @@ public sealed class EscapeDirector : MonoBehaviour
 
     public void Respawn(EscapeActor a, string message)
     {
-        if (a == null || a.Puppet) return;
+        if (a == null) return;
         var room = Rooms[Mathf.Clamp(RoomIndexAt(a.transform.position), 0, Rooms.Length - 1)];
         EscapeAudio.Play("fall", a.transform.position, .8f);
-        a.Knock(SpawnPoint(room, a.Slot), .5f);
+        a.Knock(SpawnPoint(room, a.Helper ? 2 : 1), .5f);
         if (a.IsHuman && message != null) Notify(message);
     }
 
     public int RoomIndexAt(Vector3 world) => Mathf.FloorToInt((world.z + RoomLength * .5f) / RoomLength);
-    public int RoomsSolved => SolvedAt == null ? 0 : Enumerable.Range(0, Rooms.Length).Count(i => Rooms[i].Solved);
+    public int RoomsSolved => Rooms == null ? 0 : Rooms.Count(r => r.Solved);
     public EscapeActor MostHelpful => Actors.OrderByDescending(a => a.Actions).FirstOrDefault();
-    /// <summary>Party point: whoever solved the most rooms (ties broken by useful actions).</summary>
-    public EscapeActor MostValuable => Actors.OrderByDescending(a => a.Solves).ThenByDescending(a => a.Actions).FirstOrDefault();
+    public EscapeActor MostValuable => Human;
 
     public EscapeInteractable BestInteractable(EscapeActor a)
     {
@@ -356,7 +516,7 @@ public sealed class EscapeDirector : MonoBehaviour
         return best;
     }
 
-    /// <summary>Bots: walk through open doors to the active room, then follow that room's plan.</summary>
+    /// <summary>Bots (the helper, or the player in tests): walk through open doors to the active room, then follow its plan.</summary>
     public EscapeOrder OrderFor(EscapeActor a)
     {
         int here = Mathf.Clamp(RoomIndexAt(a.transform.position), 0, Rooms.Length - 1);
@@ -371,6 +531,17 @@ public sealed class EscapeDirector : MonoBehaviour
         if (here > active) return EscapeOrder.Go(Rooms[active].Entry);
         return Rooms[here].Order(a);
     }
+
+    // Co-op leftovers (2026-11-16), kept as no-ops so the rooms compile unchanged: there are no owned stations now.
+    public int SeatOf(EscapeActor a) => -1;
+    public EscapeActor ActorOfSeat(int seat) => null;
+    public bool IsBotActor(EscapeActor a) => a != null && a.DrivenByBot;
+    public void AskFor(EscapeActor from, EscapeInteractable it) { }
+    public void OnFired(EscapeActor a, EscapeInteractable it) { }
+    public void Want(EscapeInteractable it) { }
+    public bool WantedRecently(EscapeInteractable it) => false;
+    public string Speech => "";
+    public string ObjectiveFor(EscapeRoom room) => room == null ? "" : room.Objective;
 
     public void Restart() { if (!MultiverseParty.InMatch) SceneManager.LoadScene(SceneManager.GetActiveScene().name); }
 

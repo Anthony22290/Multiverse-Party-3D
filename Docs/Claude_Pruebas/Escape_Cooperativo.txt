@@ -1,0 +1,33 @@
+Salas: RoomClock, RoomCipher, RoomBraziers, RoomLibrary, RoomNumbers, RoomTiles, RoomPortal
+PASS Reparto Vestíbulo del Reloj: 3 puestos entre 3 jugadores (tuyos 0)
+PASS Reparto Gabinete del Cifrado: 2 puestos entre 2 jugadores (tuyos 0)
+PASS Reparto Cripta de las Antorchas: 5 puestos entre 4 jugadores (tuyos 1)
+PASS Reparto Biblioteca del Código: 1 puestos entre 1 jugadores (tuyos 1) · TÚ NO VES LAS PISTAS
+PASS Reparto Observatorio de los Números: 1 puestos entre 1 jugadores (tuyos 0)
+PASS Reparto Puente de Baldosas: 0 puestos entre 0 jugadores (tuyos 0)
+PASS Reparto Portal del Multiverso: 3 puestos entre 3 jugadores (tuyos 1)
+PASS Pedir ayuda: el puesto «Girar la manivela de las horas» es de Coral; tú no puedes usarlo y al pedírselo lo usa (1 acción)
+PASS Vestíbulo del Reloj resuelta con todo el equipo
+PASS Cerrojo: sala 1 superada pero la puerta espera (3/4 en el círculo)
+PASS Cerrojo abierto al entrar tú en el círculo
+PASS Gabinete del Cifrado resuelta con todo el equipo
+PASS Cerrojo: sala 2 superada pero la puerta espera (3/4 en el círculo)
+PASS Cerrojo abierto al entrar tú en el círculo
+PASS Cripta de las Antorchas: sin ti el equipo no puede (sigue cerrada tras 30 s)
+PASS Los compañeros te avisan / te dictan: «Rayo: ¡Te toca! Encender la antorcha (está en tu color)»
+PASS Cripta de las Antorchas resuelta con todo el equipo
+PASS Cerrojo: sala 3 superada pero la puerta espera (3/4 en el círculo)
+PASS Cerrojo abierto al entrar tú en el círculo
+PASS Biblioteca del Código: sin ti el equipo no puede (sigue cerrada tras 30 s)
+PASS Los compañeros te avisan / te dictan: «Rayo: ¡Te toca! Escribir el código (está en tu color)»
+PASS Biblioteca: tienes el teclado y ves los libros apagados; te leen las cifras
+PASS Cerrojo: sala 4 superada pero la puerta espera (3/4 en el círculo)
+PASS Cerrojo abierto al entrar tú en el círculo
+PASS Observatorio de los Números resuelta con todo el equipo
+PASS Cerrojo: sala 5 superada pero la puerta espera (3/4 en el círculo)
+PASS Cerrojo abierto al entrar tú en el círculo
+PASS Puente de Baldosas resuelta con todo el equipo
+PASS Cerrojo: sala 6 superada pero la puerta espera (3/4 en el círculo)
+PASS Cerrojo abierto al entrar tú en el círculo
+PASS Torre completada (175 s de juego)
+INFO Acciones: Tú 3, Coral 14, Menta 7, Rayo 10

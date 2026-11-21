@@ -28,7 +28,7 @@ public sealed class MortalCodeNet : MonoBehaviour
         PartyLink.Listen(ChState, OnState);
         PartyLink.Listen(ChRequest, OnRequest);
         PartyLink.Listen(ChEvent, OnEvent);
-        PartyLink.MarkReady();
+        PartyLink.Fast(ChPose, ChState); PartyLink.MarkReady();
     }
 
     void OnDestroy() => PartyLink.Reset();

@@ -1,0 +1,15 @@
+PASS REY DE LA COLINA: controles visibles (4 botones, joystick True)
+PASS Joystick a la derecha → tecla D=True · stick x=1,00 (teclado actual: Teclado táctil)
+PASS El personaje se movió 11,7 m con el joystick
+PASS Al soltar el joystick se suelta la D
+PASS Botón SALTAR → Espacio pulsado
+PASS Al soltar el botón se suelta Espacio
+PASS Dos dedos a la vez: W (joystick arriba) + E (bomba)
+PASS MEMORIA MUSICAL: 4 botones de colores, sin joystick
+PASS Botón ROJO → flecha ↑
+PASS Botón AZUL → flecha →
+PASS Botón VERDE → flecha ↓
+PASS Botón AMARILLO → flecha ←
+PASS CÓDIGO MORTAL: controles con cámara arrastrando
+PASS Arrastrar a la derecha → botón derecho=True · movimiento total del ratón x=196
+PASS Teclado de códigos: tocar 1-2-3-4 escribe "1234" y pulsa 4 teclas de número

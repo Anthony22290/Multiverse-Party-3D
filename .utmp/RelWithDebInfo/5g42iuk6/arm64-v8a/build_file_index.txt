@@ -1,0 +1,2 @@
+D:\RV\MULTIVERSE PARTY 3D\Library\Bee\Android\Prj\IL2CPP\Gradle\unityLibrary\src\main\cpp\CMakeLists.txt
+D:\RV\MULTIVERSE PARTY 3D\Library\Bee\Android\Prj\IL2CPP\Gradle\unityLibrary\src\main\cpp\GameActivity\CMakeLists.txt

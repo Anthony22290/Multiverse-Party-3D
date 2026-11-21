@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 /// <summary>
@@ -19,7 +20,7 @@ public abstract class EscapeRoom : MonoBehaviour
     public virtual string Hint => "";
     /// <summary>Clues revealed one by one: automatically after ClueDelay seconds each, or earlier on request (H, time penalty).</summary>
     public virtual string[] Clues => string.IsNullOrEmpty(Hint) ? new string[0] : new[] { Hint };
-    public const float ClueDelay = 100f, CluePenalty = 30f, ClueMinimum = 40f;
+    public const float ClueDelay = 40f, CluePenalty = 0f, ClueMinimum = 20f;   // race: clues at 0:40 and 1:20, helper at 1:30
     int requestedClues;
     public int CluesShown => Mathf.Min(Clues.Length, Mathf.Max(requestedClues, Mathf.FloorToInt(ActiveTime / ClueDelay)));
     public float NextClueIn => CluesShown >= Clues.Length ? -1f : Mathf.Max(0f, (CluesShown + 1) * ClueDelay - ActiveTime);
@@ -42,7 +43,9 @@ public abstract class EscapeRoom : MonoBehaviour
     protected List<EscapeActor> Team => D.Actors;
     /// <summary>Helper mode: bots leave the key step to the player for a while and only finish it after `delay` seconds.</summary>
     protected bool Assist(float delay) => D.AutoHuman || ActiveTime > delay * D.AssistScale;
-    protected int TeamSize => D.Actors.Count;
+    /// <summary>Players who must cross / stand somewhere to solve a room (the helper bot does not count).</summary>
+    protected int TeamSize => D.Actors.Count(a => !a.Helper);
+    protected IEnumerable<EscapeActor> Runners => D.Actors.Where(a => !a.Helper);
 
     public void Setup(EscapeDirector director, int index) { D = director; Index = index; }
     public abstract void Build();
@@ -55,6 +58,8 @@ public abstract class EscapeRoom : MonoBehaviour
     public virtual bool KeypadSubmit(string code, EscapeActor a) => false;
     /// <summary>Online client: the host says this room is solved.</summary>
     public void NetSolve(EscapeActor by) => Solve(by);
+    /// <summary>Race: the helper ran out of time, the room opens anyway.</summary>
+    public void ForceSolve(EscapeActor by) => Solve(by);
     /// <summary>Online client: clues the host has revealed.</summary>
     public void ForceClues(int shown) => requestedClues = Mathf.Max(requestedClues, shown);
 
@@ -63,19 +68,74 @@ public abstract class EscapeRoom : MonoBehaviour
         if (Solved) return;
         if (D.IsClient && !D.NetSolving) return;   // online: only the host decides (EscapeNet)
         Solved = true; SolvedBy = by;
+        if (LocalBlind) foreach (var r in secrets) if (r != null) r.enabled = true;
         OnSolved();
         D.OnRoomSolved(this, by);
     }
     protected virtual void OnSolved() { }
 
     /// <summary>Waiting spot near the exit, along the right wall, out of the way.</summary>
-    protected EscapeOrder Wait(EscapeActor a) => EscapeOrder.Go(W(WaitSpot(a.Role)), .5f);
+    public EscapeOrder IdleOrder(EscapeActor a) => Wait(a);
+    protected EscapeOrder Wait(EscapeActor a) { var o = EscapeOrder.Go(W(WaitSpot(a.Role)), .5f); o.idle = true; return o; }
     protected virtual Vector3 WaitSpot(int slot) => new Vector3(Width * .5f - 2.4f - (slot % 2) * 1.2f, 0f, Length * .5f - 2.4f - (slot / 2) * 1.2f);
     /// <summary>Last actor who touched this room's puzzle (credit for team solves).</summary>
     protected EscapeActor lastTouch;
     protected void Touch(EscapeActor a) { if (a != null) lastTouch = a; }
 
     protected bool InRoom(EscapeActor a) => D.RoomIndexAt(a.transform.position) == Index;
+
+    // ------------------------------------------------------------------ co-op (2026-11-16)
+    // Every puzzle station belongs to one player (a coloured light over it shows whose it is). Only its owner can use it;
+    // the others must ask (E on a teammate's station asks that bot to do it) or tell them what to do. In some rooms the
+    // owner of the key station (the keypad, the clock lever) cannot read the clues: the team has to read them aloud.
+    readonly List<EscapeInteractable> stations = new();
+    readonly List<Renderer> secrets = new();
+    public IReadOnlyList<EscapeInteractable> Stations => stations;
+    /// <summary>Whose owner cannot see the room's secret clues (null = everybody sees everything).</summary>
+    protected virtual EscapeInteractable BlindStation => null;
+    /// <summary>What teammates read aloud when the local player is the blind one.</summary>
+    public virtual string[] ReadAloud => null;
+    public bool LocalBlind { get; private set; }
+    /// <summary>One line about the local player's job in this room (shown under the objective).</summary>
+    public string RoleText { get; private set; } = "";
+    protected void Secret(GameObject go) { if (go != null) secrets.AddRange(go.GetComponentsInChildren<Renderer>(true)); }
+    protected void Secret(Component c) { if (c != null) Secret(c.gameObject); }
+    /// <summary>Extra hiding for a blind local player (e.g. books that stop glowing).</summary>
+    protected virtual void OnBlind() { }
+    /// <summary>A bot plan needs this station: if it is the local player's, a teammate tells them.</summary>
+    protected void Want(EscapeInteractable it) => D.Want(it);
+
+    /// <summary>Hands the room's stations out: neighbouring stations go to the same player and, when there are enough, everybody gets some.
+    /// Same result on every computer (positions and party seats are the same everywhere).</summary>
+    public void AssignStations()
+    {
+        stations.Clear();
+        foreach (var it in GetComponentsInChildren<EscapeInteractable>(true))
+            if (!it.Shared) stations.Add(it);   // carried items too: only their owner can pick them up
+        var seats = D.Actors.Select(a => D.SeatOf(a)).Distinct().OrderBy(s => s).ToList();
+        if (stations.Count > 0 && seats.Count > 0)
+        {
+            var sorted = stations.OrderBy(it => Mathf.Round(L(it.Point).x * 4f)).ThenBy(it => Mathf.Round(L(it.Point).z * 4f))
+                .ThenBy(it => Mathf.Round(L(it.Point).y * 4f)).ThenBy(it => it.NetId).ToList();
+            int groups = Mathf.Min(seats.Count, sorted.Count);
+            int shift = (Index * 5 + 1) % seats.Count;   // a different player gets the first group in every room
+            for (int k = 0; k < sorted.Count; k++) sorted[k].Owner = seats[(k * groups / sorted.Count + shift) % seats.Count];
+        }
+        var human = D.Human;
+        int me = human != null ? D.SeatOf(human) : -99;
+        bool person = human != null && !human.DrivenByBot;
+        if (person && BlindStation != null && BlindStation.Owner == me && D.Actors.Count > 1)
+        {
+            LocalBlind = true;
+            foreach (var r in secrets) if (r != null) r.enabled = false;
+            OnBlind();
+        }
+        int mine = stations.Count(s => s.Owner == me);
+        RoleText = !person ? "" : LocalBlind ? "Tu papel: manejas el puesto clave pero NO puedes leer las pistas. ¡Que te las dicten!"
+            : mine > 0 ? $"Tus puestos: {mine} (luz de tu color). Los demás son de tus compañeros: apunta y E para pedírselo."
+            : stations.Count > 0 ? "Aquí no tienes puestos: observa, lee y dirige a tu equipo." : "";
+        if (stations.Count > 0) gameObject.AddComponent<EscapeStationMarks>().Init(this);
+    }
 
     protected static Material M(string key, Color c) => EscapeKit.Mat(key, c);
     protected static Material P(Color c) => EscapeKit.Paint(c);
@@ -127,6 +187,47 @@ public abstract class EscapeRoom : MonoBehaviour
         {
             p.startColor = Color.Lerp(color, Hues[i % Hues.Length], .5f);
             burst.Emit(p, 1);
+        }
+    }
+}
+
+/// <summary>Coloured light over every station of the active room: the owner's colour (bigger for your own, flashing when needed).</summary>
+public sealed class EscapeStationMarks : MonoBehaviour
+{
+    sealed class Mark { public EscapeInteractable it; public Transform orb; public Material mat; public Color color; public bool mine; }
+    EscapeRoom room;
+    readonly List<Mark> marks = new();
+
+    public void Init(EscapeRoom r)
+    {
+        room = r;
+        var human = r.D.Human;
+        int me = human != null && !human.DrivenByBot ? r.D.SeatOf(human) : -99;
+        foreach (var it in r.Stations)
+        {
+            var owner = r.D.ActorOfSeat(it.Owner);
+            var m = new Mark { it = it, color = owner != null ? owner.Tint : Color.white, mine = it.Owner == me };
+            m.mat = EscapeKit.Glow(m.color, 1.6f);
+            m.orb = EscapeKit.Shape(PrimitiveType.Sphere, transform, "Puesto de " + (owner != null ? owner.DisplayName : "?"), Vector3.zero, Vector3.one * .1f, m.mat, false).transform;
+            m.orb.gameObject.SetActive(false);
+            marks.Add(m);
+        }
+    }
+
+    void LateUpdate()
+    {
+        if (room == null || room.D == null) return;
+        bool show = room.D.ActiveRoom == room && !room.Solved && room.D.State != EscapeDirector.Phase.Lobby;
+        foreach (var m in marks)
+        {
+            bool on = show && m.it != null && m.it.isActiveAndEnabled;
+            if (m.orb.gameObject.activeSelf != on) m.orb.gameObject.SetActive(on);
+            if (!on) continue;
+            bool wanted = room.D.WantedRecently(m.it);
+            float s = (m.mine ? .15f : .1f) * (wanted ? 1.35f + Mathf.Sin(Time.time * 12f) * .3f : 1f + Mathf.Sin(Time.time * 3f + m.it.NetId) * .08f);
+            m.orb.position = m.it.Point + m.it.markOffset;
+            m.orb.localScale = Vector3.one * s;
+            EscapeKit.SetGlow(m.mat, m.color, wanted ? 4f : m.mine ? 2.6f : 1.5f);
         }
     }
 }

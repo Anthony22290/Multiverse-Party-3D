@@ -86,6 +86,22 @@ public static class PartyLink
     static byte outChannel;
     static readonly ReliableKey Key = ReliableKey.FromInts(0x4D50, 0, 0, 0);
 
+    // 2026-11-20 · FAST CHANNELS. Fusion's "reliable data" is meant for big, rare transfers: streaming poses through it
+    // 20 times a second (and relaying them through the host) built a queue that grew every second, so clients got the
+    // host's messages ("start!", world state) later and later and sat on "Esperando al anfitrión". Channels marked
+    // with Fast() carry state that is resent all the time (poses, inputs, snapshots): they now travel as unreliable
+    // RPCs (latest wins, a lost packet is simply replaced by the next one), cut in pieces when they are big.
+    // Everything else (events, requests, results, the "ready" handshake) stays reliable.
+    static readonly HashSet<byte> fastChannels = new HashSet<byte>();
+    const int FragSize = 400;
+    static ushort fastSeq;
+    sealed class Assembly { public int seq = -1; public byte[][] parts; public int have; }
+    static readonly Dictionary<PlayerRef, Assembly> assemblies = new Dictionary<PlayerRef, Assembly>();
+
+    /// <summary>These channels carry state that is resent continuously: send them unreliably (fast, never queued).</summary>
+    public static void Fast(params byte[] channels) { foreach (var c in channels) fastChannels.Add(c); }
+    static bool IsFast(byte channel) => fastChannels.Contains(channel);
+
     /// <summary>Starts a message: write the payload into the returned writer, then call one of the Send methods.</summary>
     public static BinaryWriter Begin(byte channel)
     {
@@ -103,6 +119,7 @@ public static class PartyLink
     {
         if (!Active) return;
         if (P.IsHost) { DeliverLocal(); return; }
+        if (IsFast(outChannel)) { SendFast(PlayerRef.None, outStream.GetBuffer(), (int)outStream.Length); return; }
         try { P.Runner.SendReliableDataToServer(Key, new ReadOnlySpan<byte>(outStream.GetBuffer(), 0, (int)outStream.Length)); }
         catch (Exception e) { Debug.LogWarning("PartyLink: envío al anfitrión fallido · " + e.Message); }
     }
@@ -127,6 +144,7 @@ public static class PartyLink
         var owner = P.Members[member].Owner;
         if (P.Members[member].Bot || owner == PlayerRef.None) return;
         if (owner == P.Runner.LocalPlayer) { DeliverLocal(); return; }
+        if (IsFast(outChannel)) { SendFast(owner, outStream.GetBuffer(), (int)outStream.Length); return; }
         try { P.Runner.SendReliableDataToPlayer(owner, Key, new ReadOnlySpan<byte>(outStream.GetBuffer(), 0, (int)outStream.Length)); }
         catch (Exception e) { Debug.LogWarning("PartyLink: envío fallido · " + e.Message); }
     }
@@ -134,12 +152,52 @@ public static class PartyLink
     static void Broadcast(byte[] buffer, int length, PlayerRef skip)
     {
         var runner = P.Runner;
+        bool fast = length > 0 && IsFast(buffer[0]);
         foreach (var player in runner.ActivePlayers)
         {
             if (player == runner.LocalPlayer || player == skip) continue;
+            if (fast) { SendFast(player, buffer, length); continue; }
             try { runner.SendReliableDataToPlayer(player, Key, new ReadOnlySpan<byte>(buffer, 0, length)); }
             catch (Exception e) { Debug.LogWarning("PartyLink: difusión fallida · " + e.Message); }
         }
+    }
+
+    /// <summary>Unreliable send, cut in pieces of <see cref="FragSize"/> bytes. target None = to the host.</summary>
+    static void SendFast(PlayerRef target, byte[] buffer, int length)
+    {
+        var net = P.Net; if (net == null) return;
+        int count = (length + FragSize - 1) / FragSize;
+        if (count < 1 || count > 255) { Debug.LogWarning("PartyLink: mensaje rápido demasiado grande (" + length + " bytes)"); return; }
+        ushort seq = ++fastSeq;
+        for (int i = 0; i < count; i++)
+        {
+            int off = i * FragSize, n = Mathf.Min(FragSize, length - off);
+            var frag = new byte[4 + n];
+            frag[0] = (byte)seq; frag[1] = (byte)(seq >> 8); frag[2] = (byte)i; frag[3] = (byte)count;
+            Buffer.BlockCopy(buffer, off, frag, 4, n);
+            try { if (target == PlayerRef.None) net.RPC_FastUp(frag); else net.RPC_FastDown(target, frag); }
+            catch (Exception e) { Debug.LogWarning("PartyLink: envío rápido fallido · " + e.Message); return; }
+        }
+    }
+
+    /// <summary>Called by MultiversePartyNet for every piece of a fast message.</summary>
+    public static void OnFast(PlayerRef player, byte[] frag)
+    {
+        var p = P;
+        if (p == null || p.Runner == null || frag == null || frag.Length < 5) return;
+        int seq = frag[0] | (frag[1] << 8), idx = frag[2], count = frag[3];
+        if (count <= 1) { OnData(p.Runner, player, Key, new ReadOnlySpan<byte>(frag, 4, frag.Length - 4)); return; }
+        if (idx >= count) return;
+        if (!assemblies.TryGetValue(player, out var a)) assemblies[player] = a = new Assembly();
+        if (a.seq != seq || a.parts == null || a.parts.Length != count) { a.seq = seq; a.parts = new byte[count][]; a.have = 0; }
+        if (a.parts[idx] != null) return;
+        a.parts[idx] = frag; a.have++;
+        if (a.have < count) return;
+        int total = 0; foreach (var part in a.parts) total += part.Length - 4;
+        var data = new byte[total]; int at = 0;
+        foreach (var part in a.parts) { Buffer.BlockCopy(part, 4, data, at, part.Length - 4); at += part.Length - 4; }
+        a.parts = null; a.have = 0;
+        OnData(p.Runner, player, Key, data);
     }
 
     static void DeliverLocal()
@@ -203,7 +261,7 @@ public static class PartyLink
     /// <summary>Forget every handler (call from the minigame's OnDestroy).</summary>
     public static void Reset()
     {
-        handlers.Clear(); selfReady = false; readySince = -1;
+        handlers.Clear(); fastChannels.Clear(); assemblies.Clear(); selfReady = false; readySince = -1;
     }
 
     // ------------------------------------------------------------------ start handshake
@@ -223,6 +281,8 @@ public static class PartyLink
     public static void MarkReady()
     {
         if (!Active) return;
+        // 2026-11-19: while the "how to play" card is open, say we are ready only once it is closed.
+        if (PartyGameIntro.Holding) { PartyGameIntro.PendingReady = true; return; }
         selfReady = true; readySince = Time.unscaledTime;
         if (P.IsHost) AddReady(LocalMember);
         else { Begin(ChReady); SendToHost(); }
@@ -247,7 +307,11 @@ public static class PartyLink
         get
         {
             if (!Active || P == null) return "";
-            if (!P.IsHost) return "Esperando al anfitrión…";
+            if (!P.IsHost)
+            {
+                var me = P.Local;
+                return "Esperando al anfitrión…" + (me != null && me.Ping > 0 ? "  (tu ping: " + me.Ping + " ms)" : "");
+            }
             int need = 0, have = 0;
             for (int i = 0; i < P.Members.Count; i++) if (!P.Members[i].Bot) { need++; if (IsReady(i)) have++; }
             return "Esperando a los jugadores… " + have + "/" + need;
@@ -300,7 +364,7 @@ public sealed class NetPose
     struct Sample { public float t; public Vector3 p; public Quaternion r; }
     readonly Sample[] buf = new Sample[8];
     int count;
-    public const float Delay = .11f;
+    public const float Delay = .12f, MaxExtrapolation = .15f;
     public bool HasData => count > 0;
     public float LastReceived { get; private set; } = -99f;
 
@@ -319,7 +383,16 @@ public sealed class NetPose
         position = default; rotation = Quaternion.identity;
         if (count == 0) return false;
         float t = Time.time - Delay;
-        if (count == 1 || t >= buf[count - 1].t) { position = buf[count - 1].p; rotation = buf[count - 1].r; return true; }
+        if (count == 1) { position = buf[0].p; rotation = buf[0].r; return true; }
+        if (t >= buf[count - 1].t)
+        {
+            // Late (a packet was lost or delayed): keep moving a little along the last motion instead of freezing.
+            var a = buf[count - 2]; var b = buf[count - 1];
+            float span = b.t - a.t, ahead = Mathf.Min(t - b.t, MaxExtrapolation);
+            if (span > 1e-3f && span < .3f && (b.p - a.p).sqrMagnitude < 25f)
+            { position = b.p + (b.p - a.p) * (ahead / span); rotation = b.r; return true; }
+            position = b.p; rotation = b.r; return true;
+        }
         if (t <= buf[0].t) { position = buf[0].p; rotation = buf[0].r; return true; }
         for (int i = count - 1; i > 0; i--)
         {

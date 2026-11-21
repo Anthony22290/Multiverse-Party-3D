@@ -34,6 +34,10 @@ public static class NetDuoTest
         return $"{r.summary.result} · {r.summary.totalTime.TotalSeconds:0} s · errores {r.summary.totalErrors} · {scenes.Length} escenas";
     }
 
+    static string extraArgs = "";
+    /// <summary>Same as Setup, but the client leaves in the middle of the first minigame and comes back (2026-11-21).</summary>
+    public static Task<string[]> SetupRejoin() { extraArgs = " -party-rejoin"; return Setup(); }
+
     public static async Task<string[]> Setup()
     {
         report.Clear();
@@ -46,7 +50,8 @@ public static class NetDuoTest
         string probe = Path.GetFullPath("Docs/Claude_Pruebas/Red_cliente.txt");
         foreach (var old in Directory.GetFiles(Path.GetFullPath("Docs/Claude_Pruebas")).Where(f => f.EndsWith(".png"))) File.Delete(old);
         var info = new ProcessStartInfo(Path.GetFullPath(Exe),
-            $"-party-join {code} -party-probe \"{probe}\" -party-autohuman -screen-fullscreen 0 -screen-width 960 -screen-height 540") { UseShellExecute = false };
+            $"-party-join {code} -party-probe \"{probe}\" -party-autohuman -screen-fullscreen 0 -screen-width 960 -screen-height 540" + extraArgs) { UseShellExecute = false };
+        extraArgs = "";
         client = Process.Start(info);
         Add($"PASS Sala {code} creada y cliente lanzado (pid {client?.Id})");
         if (!await Until(() => party.Members.Count(m => !m.Bot) >= 2, 60f)) return Done("FAIL el cliente no se unió");
@@ -64,6 +69,34 @@ public static class NetDuoTest
     public static Task<string[]> Arena() => Play(PartyGames.Arena, 18);
     public static Task<string[]> Zombie() => Play(PartyGames.Zombie, 40);
     public static Task<string[]> Escape() => Play(PartyGames.Escape, 70);
+    public static Task<string[]> Hill() => Play(PartyGames.Hill, 25);
+
+    /// <summary>Run after SetupRejoin: the guest drops mid-minigame, comes back, waits, and gets its own seat and points.</summary>
+    public static async Task<string[]> Rejoin()
+    {
+        var party = MultiverseParty.Instance;
+        if (party == null) return new[] { "FAIL sin partida (ejecuta SetupRejoin)" };
+        report.Clear();
+        if (!await Until(() => party.Phase == PartyPhase.Voting && !party.Loading && SceneManager.GetActiveScene().name == MultiverseParty.HubScene, 45f)) return Done("FAIL no volvió la votación");
+        int guest = Enumerable.Range(0, party.Members.Count).First(i => !party.Members[i].Bot && i != party.LocalIndex);
+        var g = party.Members[guest];
+        g.Score = 2;   // points to keep
+        string name = g.Name;
+        party.Selected = PartyGames.Hill; party.Phase = PartyPhase.Reveal;
+        typeof(MultiverseParty).GetField("phaseEnds", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).SetValue(party, Time.unscaledTime);
+        if (!await Until(() => SceneManager.GetActiveScene().name == PartyGames.All[PartyGames.Hill].Scene && !party.Loading, 40f)) return Done("FAIL no cargó la colina");
+        if (!await Until(() => g.Bot, 40f)) return Done("FAIL el invitado no se desconectó");
+        Add($"PASS {name} se desconectó a mitad del minijuego · lo sustituye el bot {g.Name} · puntos del hueco {g.Score}");
+        if (!await Until(() => g.Reserved != Fusion.PlayerRef.None, 60f)) return Done("FAIL el invitado no volvió a entrar");
+        Add($"PASS {g.PendingName} volvió y espera su sitio · sigue de bot mientras dura el minijuego: {g.Bot} · fase {party.Phase}");
+        await Task.Delay(4000);
+        Add($"INFO durante la espera: el hueco sigue siendo bot={g.Bot} ({g.Name})");
+        party.HostResolve(-1);
+        if (!await Until(() => !g.Bot, 15f)) return Done("FAIL no recuperó su sitio al acabar el minijuego");
+        Add($"{(g.Name == name && g.Score == 2 ? "PASS" : "FAIL")} recuperó su sitio: hueco {guest} · nombre {g.Name} · puntos {g.Score} (esperados 2)");
+        return Done(null);
+    }
+    public static Task<string[]> Potato() => Play(PartyGames.Potato, 25);
 
     static async Task<string[]> Play(int game, int seconds)
     {
@@ -86,7 +119,7 @@ public static class NetDuoTest
         if (cam != null) ClaudeBridge.CaptureCamera(cam, Path.GetFullPath($"Docs/Claude_Pruebas/anfitrion_{scene}.png"), 1280, 720);
         var last = GuestPosition(game, slot);
         float moved = first.HasValue && last.HasValue ? Vector3.Distance(first.Value, last.Value) : -1f;
-        Add($"INFO {PartyGames.All[game].Title}: listos={PartyLink.AllReady} · invitado en el hueco {slot} · se movió {moved:0.0} m · {Describe(game, slot)}");
+        Add($"INFO {PartyGames.All[game].Title}: listos={PartyLink.AllReady} · ping invitado {party.Members[guest].Ping} ms · invitado en el hueco {slot} · se movió {moved:0.0} m · {Describe(game, slot)}");
         party.HostResolve(guest);
         if (!await Until(() => party.Phase == PartyPhase.Results, 5f)) return Done("FAIL no se resolvió la ronda");
         Add($"PASS Ronda resuelta: {party.ResultText}");
@@ -102,6 +135,8 @@ public static class NetDuoTest
             case PartyGames.Arena: { var d = Object.FindAnyObjectByType<PirateArenaDirector>(); return d != null && slot < d.Fighters.Count ? d.Fighters[slot].transform.position : null; }
             case PartyGames.Zombie: { var d = Object.FindAnyObjectByType<SurvivalDirector>(); return d != null && slot < d.Team.Count ? d.Team[slot].transform.position : null; }
             case PartyGames.Escape: { var d = Object.FindAnyObjectByType<EscapeDirector>(); return d != null && slot < d.Actors.Count ? d.Actors[slot].transform.position : null; }
+            case PartyGames.Hill: { var d = Object.FindAnyObjectByType<ColinaDirector>(); return d != null && slot < d.Players.Count ? d.Players[slot].transform.position : null; }
+            case PartyGames.Potato: { var d = Object.FindAnyObjectByType<PatataDirector>(); return d != null && slot < d.Players.Count ? d.Players[slot].transform.position : null; }
         }
         return null;
     }
@@ -130,6 +165,11 @@ public static class NetDuoTest
                 var d = Object.FindAnyObjectByType<SurvivalDirector>(); var p = d.Team[slot];
                 return $"fase {d.State} oleada {d.Wave} · invitado en red={p.NetDriven} último dato hace {Time.time - p.NetPose.LastReceived:0.00} s vida {p.Health:0} bajas {p.Kills} golpes {p.SwingSeq} · zombis {SurvivalZombie.All.Count} piezas {d.PartsInstalled}";
             }
+            case PartyGames.Hill:
+            {
+                var d = Object.FindAnyObjectByType<ColinaDirector>(); var pm = d.Players[slot];
+                return $"fase {d.State} · invitado títere={pm.Puppet} último dato hace {Time.time - pm.Net.LastReceived:0.00} s";
+            }
             case PartyGames.Escape:
             {
                 var d = Object.FindAnyObjectByType<EscapeDirector>(); var a = d.Actors[slot];
@@ -137,6 +177,15 @@ public static class NetDuoTest
             }
         }
         return "";
+    }
+
+    /// <summary>Closes only the client build (End() also leaves the party, which has crashed the editor twice).</summary>
+    public static string[] KillClient()
+    {
+        int n = 0;
+        foreach (var p in Process.GetProcessesByName("MultiverseParty3D"))
+            try { if (p.MainModule != null && p.MainModule.FileName.Replace('\\', '/').Contains("ClaudeRedPrueba")) { p.Kill(); n++; } } catch { }
+        return new[] { "clientes cerrados: " + n };
     }
 
     public static string[] End()

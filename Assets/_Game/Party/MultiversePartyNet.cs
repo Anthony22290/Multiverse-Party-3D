@@ -11,7 +11,7 @@ public sealed class MultiversePartyNet : NetworkBehaviour
     [Networked, Capacity(6)] public NetworkArray<int> Votes => default;
     [Networked, Capacity(6)] public NetworkArray<int> Characters => default;
     [Networked, Capacity(6)] public NetworkArray<int> ColorIdx => default;
-    [Networked, Capacity(30)] public NetworkArray<int> Wins => default;
+    [Networked, Capacity(120)] public NetworkArray<int> Wins => default;   // 20 games × 6 players
     [Networked, Capacity(6)] public NetworkArray<int> Pushes => default;
     [Networked, Capacity(6)] public NetworkArray<int> Pusheds => default;
     [Networked, Capacity(6)] public NetworkArray<int> EmoteCounts => default;
@@ -27,6 +27,8 @@ public sealed class MultiversePartyNet : NetworkBehaviour
     [Networked, Capacity(6)] public NetworkArray<float> Yaws => default;
     [Networked, Capacity(6)] public NetworkArray<NetworkBool> Moving => default;
     [Networked, Capacity(3)] public NetworkArray<int> Choices => default;
+    /// <summary>Round trip of every member to the host in ms (0 = the host, -1 = bot / unknown). 2026-11-20.</summary>
+    [Networked, Capacity(6)] public NetworkArray<short> Pings => default;
     [Networked] public int Phase { get; set; }
     [Networked] public int Selected { get; set; }
     [Networked] public int Round { get; set; }
@@ -38,6 +40,7 @@ public sealed class MultiversePartyNet : NetworkBehaviour
     [Networked] public int ReportsIn { get; set; }
     [Networked] public int ReportsNeeded { get; set; }
     [Networked] public int Seed { get; set; }
+    [Networked] public int Goal { get; set; }
 
     float nextPose;
 
@@ -67,9 +70,9 @@ public sealed class MultiversePartyNet : NetworkBehaviour
     }
 
     [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
-    public void RPC_Join(NetworkString<_16> name, sbyte character, sbyte color, RpcInfo info = default)
+    public void RPC_Join(NetworkString<_16> name, sbyte character, sbyte color, NetworkString<_32> id, RpcInfo info = default)
     {
-        if (Party != null) Party.HostJoin(info.Source, name.ToString(), character, color);
+        if (Party != null) Party.HostJoin(info.Source, name.ToString(), character, color, id.ToString());
     }
 
     [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
@@ -104,4 +107,12 @@ public sealed class MultiversePartyNet : NetworkBehaviour
         int member = Party.MemberOf(info.Source);
         if (member >= 0) Party.RegisterReport(member, round, claimedWin, winner);
     }
+
+    // 2026-11-20 · fast (unreliable) minigame traffic, see PartyLink.Fast. Client → host…
+    [Rpc(RpcSources.All, RpcTargets.StateAuthority, Channel = RpcChannel.Unreliable, InvokeLocal = false)]
+    public void RPC_FastUp(byte[] data, RpcInfo info = default) => PartyLink.OnFast(info.Source, data);
+
+    // …and host → one client.
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All, Channel = RpcChannel.Unreliable, InvokeLocal = false)]
+    public void RPC_FastDown([RpcTarget] PlayerRef target, byte[] data, RpcInfo info = default) => PartyLink.OnFast(info.Source, data);
 }

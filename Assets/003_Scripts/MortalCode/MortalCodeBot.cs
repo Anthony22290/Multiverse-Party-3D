@@ -16,7 +16,7 @@ public sealed class MortalCodeBot : MonoBehaviour
         var d=actor.Director;
         actor.Agent.isStopped=!d.Running;
         if(!d.Running||Time.time<thinkAt)return;
-        thinkAt=Time.time+.35f;
+        thinkAt=Time.time+.35f*MultiverseSettings.BotDelay;
         foreach(var rival in d.Actors)
         {
             var code=d.Observe(actor,rival);
@@ -29,7 +29,7 @@ public sealed class MortalCodeBot : MonoBehaviour
             if(d.CanUse(actor,terminal))
             {
                 actor.Agent.isStopped=true;
-                if(submitAt==0)submitAt=Time.time+3.5f;
+                if(submitAt==0)submitAt=Time.time+3.5f*MultiverseSettings.BotDelay;
                 if(Time.time>=submitAt && Time.time>=actor.LockedUntil){d.Submit(actor,terminal,memory[known],out _);submitAt=0;}
             }
             else{submitAt=0;actor.Agent.SetDestination(terminal.UsePoint);}

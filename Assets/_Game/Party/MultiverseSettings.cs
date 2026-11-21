@@ -1,13 +1,14 @@
 using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.UI;
 using UnityEngine.UI;
 
 /// <summary>Player settings shared by every scene: mouse sensitivity, master and music volume (saved in PlayerPrefs).</summary>
 public static class MultiverseSettings
 {
-    const string SensKey = "Ajuste_Sensibilidad", VolKey = "Ajuste_Volumen", MusicKey = "Ajuste_Musica";
+    const string SensKey = "Ajuste_Sensibilidad", VolKey = "Ajuste_Volumen", MusicKey = "Ajuste_Musica", FullKey = "Ajuste_PantallaCompleta", BotKey = "Ajuste_Bots";
     public static event Action Changed;
 
     public static float Sensitivity
@@ -28,8 +29,67 @@ public static class MultiverseSettings
         set { PlayerPrefs.SetFloat(MusicKey, Mathf.Clamp01(value)); PlayerPrefs.Save(); Changed?.Invoke(); }
     }
 
+    /// <summary>Bot difficulty (2026-11-19): 0 = fácil, 1 = normal, 2 = difícil. Bots run on the host, so the host's choice counts.</summary>
+    public static int BotLevel
+    {
+        get => Mathf.Clamp(PlayerPrefs.GetInt(BotKey, 1), 0, 2);
+        set { PlayerPrefs.SetInt(BotKey, Mathf.Clamp(value, 0, 2)); PlayerPrefs.Save(); Changed?.Invoke(); }
+    }
+    public static string BotLevelName => BotLevel == 0 ? "FÁCIL" : BotLevel == 2 ? "DIFÍCIL" : "NORMAL";
+    /// <summary>Scales a bot's 0–1 skill: easy roughly halves it, hard pulls it most of the way to 1.</summary>
+    public static float BotSkill(float skill) => BotLevel == 0 ? skill * .5f : BotLevel == 2 ? Mathf.Lerp(skill, 1f, .6f) : skill;
+    /// <summary>Multiplier for bots' thinking / reaction delays (bigger = slower bots).</summary>
+    public static float BotDelay => BotLevel == 0 ? 1.7f : BotLevel == 2 ? .7f : 1f;
+
+    /// <summary>Full screen (borderless, at the monitor's resolution) or a 1280×720 window. Saved; F11 or Alt+Enter toggle it.</summary>
+    public static bool FullScreen
+    {
+        get => PlayerPrefs.GetInt(FullKey, 1) == 1;
+        set { PlayerPrefs.SetInt(FullKey, value ? 1 : 0); PlayerPrefs.Save(); ApplyScreen(); Changed?.Invoke(); }
+    }
+
+    public static void ApplyScreen()
+    {
+        if (Application.isEditor) return;
+        if (FullScreen)
+        {
+            int w = Display.main.systemWidth, h = Display.main.systemHeight;
+            if (w <= 0 || h <= 0) { w = Screen.currentResolution.width; h = Screen.currentResolution.height; }
+            Screen.SetResolution(w, h, FullScreenMode.FullScreenWindow);
+        }
+        else
+        {
+            int w = Mathf.Min(1280, Display.main.systemWidth - 80), h = Mathf.Min(720, Display.main.systemHeight - 120);
+            Screen.SetResolution(Mathf.Max(640, w), Mathf.Max(360, h), FullScreenMode.Windowed);
+        }
+    }
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-    static void Apply() => AudioListener.volume = MasterVolume;
+    static void Apply()
+    {
+        AudioListener.volume = MasterVolume;
+        // 2026-11-18: always start the way the player chose (full screen by default), whatever Windows remembered.
+        ApplyScreen();
+        var keys = new GameObject("Teclas de pantalla"); UnityEngine.Object.DontDestroyOnLoad(keys); keys.hideFlags = HideFlags.HideInHierarchy;
+        keys.AddComponent<ScreenModeKeys>();
+    }
+}
+
+/// <summary>F11 or Alt+Enter switch between full screen and window (and remember it).</summary>
+public sealed class ScreenModeKeys : MonoBehaviour
+{
+    System.Collections.IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(1.5f);
+        Debug.Log($"Pantalla: {Screen.fullScreenMode} {Screen.width}x{Screen.height} · monitor {Display.main.systemWidth}x{Display.main.systemHeight} · ajuste pantalla completa={MultiverseSettings.FullScreen}");
+    }
+
+    void Update()
+    {
+        var k = Keyboard.current; if (k == null) return;
+        bool alt = k.leftAltKey.isPressed || k.rightAltKey.isPressed;
+        if (k.f11Key.wasPressedThisFrame || (alt && k.enterKey.wasPressedThisFrame)) MultiverseSettings.FullScreen = !MultiverseSettings.FullScreen;
+    }
 }
 
 /// <summary>Looping background music for the menu and the plaza; follows the music volume setting.</summary>
@@ -60,7 +120,7 @@ public sealed class MultiverseSettingsPanel : MonoBehaviour
 {
     public static bool IsOpen => current != null;
     static MultiverseSettingsPanel current;
-    Text sensValue, volValue, musicValue;
+    Text sensValue, volValue, musicValue, fullText, botText;
 
     public static void Toggle(Transform canvas)
     {
@@ -77,13 +137,21 @@ public sealed class MultiverseSettingsPanel : MonoBehaviour
 
     void Build(Transform root)
     {
-        var card = Rect("Tarjeta", root, Vector2.zero, new Vector2(500, 380));
+        var card = Rect("Tarjeta", root, Vector2.zero, new Vector2(500, 510));
         card.gameObject.AddComponent<Image>().color = new Color(.1f, .16f, .3f, .97f);
-        Label("AJUSTES", card, new Vector2(0, 150), new Vector2(460, 50), 34, new Color(1f, .8f, .3f));
-        sensValue = Row(card, 80, "SENSIBILIDAD DEL RATÓN", .2f, 3f, MultiverseSettings.Sensitivity, v => { MultiverseSettings.Sensitivity = v; Refresh(); });
-        volValue = Row(card, 0, "VOLUMEN GENERAL", 0f, 1f, MultiverseSettings.MasterVolume, v => { MultiverseSettings.MasterVolume = v; Refresh(); });
-        musicValue = Row(card, -80, "MÚSICA DE LA PLAZA Y EL MENÚ", 0f, 1f, MultiverseSettings.MusicVolume, v => { MultiverseSettings.MusicVolume = v; Refresh(); });
-        var close = Rect("CERRAR", card, new Vector2(0, -150), new Vector2(200, 46));
+        Label("AJUSTES", card, new Vector2(0, 215), new Vector2(460, 50), 34, new Color(1f, .8f, .3f));
+        sensValue = Row(card, 145, "SENSIBILIDAD DEL RATÓN", .2f, 3f, MultiverseSettings.Sensitivity, v => { MultiverseSettings.Sensitivity = v; Refresh(); });
+        volValue = Row(card, 70, "VOLUMEN GENERAL", 0f, 1f, MultiverseSettings.MasterVolume, v => { MultiverseSettings.MasterVolume = v; Refresh(); });
+        musicValue = Row(card, -5, "MÚSICA DE LA PLAZA Y EL MENÚ", 0f, 1f, MultiverseSettings.MusicVolume, v => { MultiverseSettings.MusicVolume = v; Refresh(); });
+        var full = Rect("PANTALLA", card, new Vector2(0, -75), new Vector2(420, 44));
+        full.gameObject.AddComponent<Image>().color = new Color(.35f, .9f, 1f, .9f);
+        fullText = Label("", full, Vector2.zero, new Vector2(410, 40), 18, new Color(.05f, .1f, .2f));
+        full.gameObject.AddComponent<Button>().onClick.AddListener(() => { MultiverseSettings.FullScreen = !MultiverseSettings.FullScreen; Refresh(); });
+        var bots = Rect("BOTS", card, new Vector2(0, -130), new Vector2(420, 44));
+        bots.gameObject.AddComponent<Image>().color = new Color(1f, .6f, .45f, .9f);
+        botText = Label("", bots, Vector2.zero, new Vector2(410, 40), 18, new Color(.2f, .07f, .03f));
+        bots.gameObject.AddComponent<Button>().onClick.AddListener(() => { MultiverseSettings.BotLevel = (MultiverseSettings.BotLevel + 1) % 3; Refresh(); });
+        var close = Rect("CERRAR", card, new Vector2(0, -205), new Vector2(200, 46));
         close.gameObject.AddComponent<Image>().color = new Color(1f, .74f, .22f);
         close.gameObject.AddComponent<Button>().onClick.AddListener(() => { Destroy(gameObject); current = null; });
         Label("CERRAR", close, Vector2.zero, new Vector2(190, 40), 20, new Color(.16f, .1f, .04f));
@@ -95,6 +163,8 @@ public sealed class MultiverseSettingsPanel : MonoBehaviour
         sensValue.text = "x" + MultiverseSettings.Sensitivity.ToString("0.0");
         volValue.text = Mathf.RoundToInt(MultiverseSettings.MasterVolume * 100) + "%";
         musicValue.text = Mathf.RoundToInt(MultiverseSettings.MusicVolume * 100) + "%";
+        if (botText != null) botText.text = "DIFICULTAD DE LOS BOTS: " + MultiverseSettings.BotLevelName;
+        if (fullText != null) fullText.text = "PANTALLA COMPLETA: " + (MultiverseSettings.FullScreen ? "SÍ" : "NO") + "   (F11)";
     }
 
     void OnDestroy() { if (current == this) current = null; }

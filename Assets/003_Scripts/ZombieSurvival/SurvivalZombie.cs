@@ -267,7 +267,7 @@ public sealed class SurvivalZombie : MonoBehaviour
         if (cc.isGrounded && vertical < 0f) vertical = -2f;
         vertical = Mathf.Max(-25f, vertical - 22f * dt);
         push = Vector3.MoveTowards(push, Vector3.zero, dt * 14f);
-        cc.Move((move * spd + push + Vector3.up * vertical) * dt);
+        if (cc.enabled) cc.Move((move * spd + push + Vector3.up * vertical) * dt);   // a zombie that just died may have its controller off
 
         Vector3 face = attackHitAt > 0f || action == 1 || action == 2 ? (target != null ? target.transform.position - transform.position : transform.forward) : move;
         if (action == 2 || action == 3) face = chargeDir;

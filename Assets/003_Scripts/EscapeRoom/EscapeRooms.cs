@@ -17,7 +17,8 @@ public sealed class RoomTiles : EscapeRoom
     static readonly Color Stone = new Color(.62f, .58f, .72f), Safe = new Color(.4f, 1f, .75f);
 
     public override string Title => "Puente de Baldosas";
-    public override string Objective => Solved ? "El puente es estable: cruzad todos." : "Cruzad el abismo. No todas las baldosas aguantan.";
+    int crossed;
+    public override string Objective => Solved ? "El puente es estable." : $"Cruza el abismo hasta el otro lado. No todas las baldosas aguantan.";
     public override string[] Clues => new[]
     {
         "De vez en cuando el puente brilla un instante. No es decoración.",
@@ -104,6 +105,8 @@ public sealed class RoomTiles : EscapeRoom
         }
         if (!mine || Solved) return;
 
+        crossed = Runners.Count(x => L(x.transform.position).z > 5.6f && x.transform.position.y > -1f);
+        if (crossed >= TeamSize) { Solve(lastTouch != null ? lastTouch : Team[0]); return; }
         foreach (var a in Team)
         {
             if (!a.Grounded) continue;
@@ -113,7 +116,7 @@ public sealed class RoomTiles : EscapeRoom
                 t.state = 1; t.t = 0f;
                 EscapeAudio.Play("crack", t.go.transform.position, .5f);
             }
-            if (L(a.transform.position).z > 5.6f) { Solve(a); break; }
+            if (L(a.transform.position).z > 5.6f) Touch(a);
         }
     }
 
@@ -166,6 +169,7 @@ public sealed class RoomLibrary : EscapeRoom
     readonly Dictionary<EscapeActor, int> readStep = new();
     float dwell, lockedUntil;
     EscapeInteractable keypad;
+    readonly List<(Renderer r, Material off)> litBooks = new();
     Material screen;
 
     public override string Title => "Biblioteca del Código";
@@ -209,7 +213,8 @@ public sealed class RoomLibrary : EscapeRoom
                 for (int b = 0; b < 6; b++)
                 {
                     float hgt = .5f + ((b * 7 + row * 3 + h) % 4) * .06f;
-                    EscapeKit.Block(root, "Libro", new Vector3(-1.05f + b * .42f, y + hgt * .5f, .24f), new Vector3(.3f, hgt, .32f), lit.Contains(row * 6 + b) ? on : off, .03f, false);
+                    var book = EscapeKit.Block(root, "Libro", new Vector3(-1.05f + b * .42f, y + hgt * .5f, .24f), new Vector3(.3f, hgt, .32f), lit.Contains(row * 6 + b) ? on : off, .03f, false);
+                    if (lit.Contains(row * 6 + b)) litBooks.Add((book.GetComponent<Renderer>(), off));
                 }
             }
         }
@@ -237,12 +242,17 @@ public sealed class RoomLibrary : EscapeRoom
 
     protected override Vector3 WaitSpot(int slot) => new Vector3(-1.2f + (slot % 3) * 1.2f, 0f, -5.8f + (slot / 3) * 1.2f);
 
+    // Co-op: whoever owns the keypad sees every book dark; the others count them aloud.
+    protected override EscapeInteractable BlindStation => keypad;
+    protected override void OnBlind() { foreach (var (r, off) in litBooks) if (r != null) r.sharedMaterial = off; }
+    public override string[] ReadAloud => Enumerable.Range(0, 4).Select(h => $"En la estantería {HueNames[h]} brillan {digits[h]} libros.").ToArray();
+
     public override bool KeypadSubmit(string code, EscapeActor a) => Submit(code, a);
     void UseKeypad(EscapeActor a)
     {
         if (a.DrivenByBot)
         {
-            D.NetSubmit(this, readStep.TryGetValue(a, out int s) && s >= 4 ? Code : Random.Range(1000, 10000).ToString(), a);
+            D.NetSubmit(this, readStep.Values.Any(s => s >= 4) ? Code : Random.Range(1000, 10000).ToString(), a);   // co-op: the reader may not be the typist
             return;
         }
         D.HUD.OpenKeypad("CÓDIGO DE LA BIBLIOTECA", code => D.NetSubmit(this, code, a));
@@ -303,7 +313,7 @@ public sealed class RoomBraziers : EscapeRoom
     public override string[] Clues => new[]
     {
         "Las antorchas no arden para siempre. El sello quiere verlas todas encendidas a la vez.",
-        $"Cada antorcha dura {Burn:0} s: repartíos y encended primero las más alejadas. Las dos con aro de tu color te esperan a ti."
+        $"Cada antorcha dura {Burn:0} s: planea un recorrido corto y enciéndelas seguidas, sin pararte."
     };
     public override Color Floor => new Color(.4f, .38f, .42f);
     public override Color Wall => new Color(.56f, .52f, .56f);
@@ -323,7 +333,6 @@ public sealed class RoomBraziers : EscapeRoom
             EscapeKit.Shape(PrimitiveType.Cylinder, transform, "Columna del brasero", b.local + new Vector3(0, .55f, 0), new Vector3(.7f, .55f, .7f), stone, true);
             EscapeKit.Shape(PrimitiveType.Cylinder, transform, "Cuenco", b.local + new Vector3(0, 1.18f, 0), new Vector3(1.15f, .1f, 1.15f), iron, false);
             EscapeKit.Shape(PrimitiveType.Cylinder, transform, "Aro dorado", b.local + new Vector3(0, 1.27f, 0), new Vector3(1.22f, .025f, 1.22f), gold, false);
-            if (k >= 3) EscapeKit.Shape(PrimitiveType.Cylinder, transform, "Aro del jugador", b.local + new Vector3(0, .03f, 0), new Vector3(1.6f, .015f, 1.6f), EscapeKit.Glow(EscapeDirector.Colors[0], 1.4f), false);
             b.mat = EscapeKit.Glow(new Color(1f, .55f, .15f), 3f);
             b.flame = EscapeKit.Shape(PrimitiveType.Sphere, transform, "Llama", b.local + new Vector3(0, 1.55f, 0), Vector3.zero, b.mat, false).transform;
             b.light = EscapeKit.PointLight(transform, b.local + new Vector3(0, 2f, 0), new Color(1f, .6f, .25f), 7f, 0f);
@@ -332,7 +341,7 @@ public sealed class RoomBraziers : EscapeRoom
             point.transform.localPosition = b.local + Vector3.up * 1.2f;
             var bb = b;
             b.use = EscapeInteractable.Add(point, "Encender la antorcha", .6f, a => Ignite(bb, a), a => Active && Left(bb) < 6f, 2.1f);
-            b.use.aimRadius = .7f;
+            b.use.aimRadius = .7f; b.use.markOffset = new Vector3(0, 1f, 0);
             braziers.Add(b);
         }
         EscapeKit.Shape(PrimitiveType.Cylinder, transform, "Sello de la cripta", new Vector3(0, .02f, .2f), new Vector3(3.2f, .02f, 3.2f), EscapeKit.Glow(Accent, .4f), false);
@@ -372,21 +381,22 @@ public sealed class RoomBraziers : EscapeRoom
 
     public override EscapeOrder Order(EscapeActor a)
     {
+        // Co-op: a torch only lights for its owner. When the others burn, the local player is told to light theirs.
+        if (braziers.Any(Lit)) foreach (var b in braziers) if (!b.use.Mine(a) && Left(b) < 6f) Want(b.use);
         if (a.Role == 0 && !D.AutoHuman) return Wait(a);
-        if (claims.TryGetValue(a, out var mine) && Left(mine) < 6f) return EscapeOrder.Use(mine.use);
+        if (claims.TryGetValue(a, out var mine) && Left(mine) < 6f && mine.use.Mine(a)) return EscapeOrder.Use(mine.use);
         claims.Remove(a);
         Brazier best = null;
         float bestScore = float.MaxValue;
         foreach (var b in braziers)
         {
             float left = Left(b);
-            if (left >= 6f || claims.ContainsValue(b)) continue;
-            if (braziers.IndexOf(b) >= 3 && !Assist(100f)) continue;
+            if (left >= 6f || !b.use.Mine(a) || claims.ContainsValue(b)) continue;
             float score = left * 2f + Vector3.Distance(W(b.local), a.transform.position);
             if (score < bestScore) { bestScore = score; best = b; }
         }
         if (best != null) { claims[a] = best; return EscapeOrder.Use(best.use); }
-        return EscapeOrder.Go(W(new Vector3((a.Role - 2.5f) * .8f, 0, .2f)), .6f);
+        return Wait(a);
     }
 }
 
@@ -407,11 +417,11 @@ public sealed class RoomPortal : EscapeRoom
     float allIn;
 
     public override string Title => "Portal del Multiverso";
-    public override string Objective => !open ? $"El portal duerme. El generador pide energía ({inserted}/3)." : $"¡Todos dentro del portal! ({inZone}/{TeamSize})";
+    public override string Objective => !open ? $"El portal duerme. El generador pide energía ({inserted}/3)." : $"¡El portal está abierto! Entra en él.";
     public override string[] Clues => new[]
     {
         "Tres luces azules esperan en la sala. Una de ellas no está al alcance de la mano.",
-        "Salta (Espacio) por la escalinata de la izquierda para alcanzar la célula alta. Cuando el portal se abra, entrad TODOS en el círculo."
+        "Salta (Espacio) por la escalinata de la izquierda para alcanzar la célula alta. Cuando el portal se abra, entra en el círculo."
     };
     public override Color Floor => new Color(.32f, .26f, .5f);
     public override Color Wall => new Color(.48f, .4f, .7f);
@@ -441,6 +451,7 @@ public sealed class RoomPortal : EscapeRoom
         genPoint.transform.SetParent(transform, false);
         genPoint.transform.localPosition = gen + new Vector3(0, 1f, -1.1f);
         generator = EscapeInteractable.Add(genPoint, "Insertar la célula", .3f, Insert, a => Active && !open && a.Carried != null && a.Carried.kind == "celula", 2.1f);
+        generator.Shared = true;
 
         // Cells: two on pedestals, one on top of a small stepped platform.
         AddCell(new Vector3(-8.2f, 0, -8.4f), 0f, stone);
@@ -511,7 +522,7 @@ public sealed class RoomPortal : EscapeRoom
         portalLight.intensity = open ? 3.5f * pulse : .4f;
         if (!Active || !open) return;
         Vector3 z = W(Zone);
-        inZone = Team.Count(a => { var d = a.transform.position - z; d.y = 0f; return d.magnitude < ZoneRadius; });
+        inZone = Runners.Count(a => { var d = a.transform.position - z; d.y = 0f; return d.magnitude < ZoneRadius; });
         if (inZone == TeamSize) { allIn += Time.deltaTime; if (allIn > 1.5f) Solve(lastTouch); }
         else allIn = 0f;
     }
@@ -524,14 +535,14 @@ public sealed class RoomPortal : EscapeRoom
             return EscapeOrder.Exact(W(Zone + new Vector3(Mathf.Cos(ang), 0, Mathf.Sin(ang)) * 1.2f));
         }
         if (a.Carried != null && a.Carried.kind == "celula") return EscapeOrder.Use(generator);
-        if (claims.TryGetValue(a, out var mine) && mine != null && mine.Carrier == null && mine.Pick.enabled) return EscapeOrder.Use(mine.Pick);
+        foreach (var c in cells) if (c != null && c.Carrier == null && c.Pick.enabled && !c.Pick.Mine(a)) Want(c.Pick);
+        if (claims.TryGetValue(a, out var mine) && mine != null && mine.Carrier == null && mine.Pick.enabled && mine.Pick.Mine(a)) return EscapeOrder.Use(mine.Pick);
         claims.Remove(a);
         EscapeItem best = null;
         float bestD = float.MaxValue;
         foreach (var c in cells)
         {
-            if (c == null || c.Carrier != null || !c.Pick.enabled || claims.ContainsValue(c)) continue;
-            if (c == cells[cells.Count - 1] && !Assist(100f)) continue;
+            if (c == null || c.Carrier != null || !c.Pick.enabled || claims.ContainsValue(c) || !c.Pick.Mine(a)) continue;   // co-op: each cell has an owner
             float d = (c.transform.position - a.transform.position).sqrMagnitude;
             if (d < bestD) { bestD = d; best = c; }
         }

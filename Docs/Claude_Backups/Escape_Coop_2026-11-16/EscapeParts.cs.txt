@@ -1,0 +1,196 @@
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+
+/// <summary>What a bot should do this frame: walk somewhere, optionally use an interactable when in reach.</summary>
+public struct EscapeOrder
+{
+    public Vector3 target;
+    public EscapeInteractable use;
+    public bool precise;      // exact spot (plates, tiles, crate pushing): no avoidance or crowd separation
+    public float arrive;
+
+    public static EscapeOrder Go(Vector3 target, float arrive = .6f) => new EscapeOrder { target = target, arrive = arrive };
+    public static EscapeOrder Exact(Vector3 target) => new EscapeOrder { target = target, precise = true, arrive = .2f };
+    public static EscapeOrder Push(Vector3 through) => new EscapeOrder { target = through, precise = true, arrive = .05f };
+    public static EscapeOrder Use(EscapeInteractable it) => new EscapeOrder { target = it.Point, use = it, arrive = it.range * .55f };
+}
+
+/// <summary>Anything a player can use with E (bots use the same entry point).</summary>
+public sealed class EscapeInteractable : MonoBehaviour
+{
+    public static readonly List<EscapeInteractable> All = new();
+
+    public string prompt = "Usar";
+    public float hold;                 // seconds to hold E (0 = press)
+    public float range = 2f;           // horizontal reach
+    public float maxBelow = 2.6f;      // how far below the point the actor's feet may be
+    public float aimRadius = .55f;     // first person: how close to the crosshair ray the point must be
+    public Func<EscapeActor, bool> canUse;
+    public Action<EscapeActor> onUse;
+    public Func<EscapeActor, string> promptFor;
+
+    void OnEnable() { if (!All.Contains(this)) All.Add(this); }
+    void OnDisable() => All.Remove(this);
+
+    // Online (2026-11-12): every computer creates the interactables in the same order, so a counter names them alike.
+    public int NetId;
+    /// <summary>Only acts on the computer that used it (keypads open a local panel; the typed code is what travels).</summary>
+    public bool NetLocal;
+    static int nextNetId;
+    static readonly Dictionary<int, EscapeInteractable> byId = new();
+    public static void ResetIds() { nextNetId = 0; byId.Clear(); }
+    public static EscapeInteractable ById(int id) => byId.TryGetValue(id, out var it) && it != null ? it : null;
+
+    public Vector3 Point => transform.position;
+    public string PromptFor(EscapeActor a) => promptFor != null ? promptFor(a) : prompt;
+    public bool CanUse(EscapeActor a) => a != null && isActiveAndEnabled && (canUse == null || canUse(a));
+
+    public bool InRange(EscapeActor a)
+    {
+        Vector3 d = a.transform.position - Point;
+        float y = d.y; d.y = 0f;
+        return d.magnitude <= range && y > -maxBelow && y < 1.6f;
+    }
+
+    public static EscapeInteractable Add(GameObject go, string prompt, float hold, Action<EscapeActor> use, Func<EscapeActor, bool> can = null, float range = 2f)
+    {
+        var it = go.AddComponent<EscapeInteractable>();
+        it.prompt = prompt; it.hold = hold; it.onUse = use; it.canUse = can; it.range = range;
+        it.NetId = ++nextNetId; byId[it.NetId] = it;
+        return it;
+    }
+}
+
+/// <summary>Floor plate pressed by players standing on it (distance check, no physics) or by a crate resting on it.</summary>
+public sealed class EscapePlate : MonoBehaviour
+{
+    public float radius = .85f;
+    public Color color = Color.white;
+    public bool Weighted;
+    public int Count { get; private set; }
+    public bool Pressed => Count > 0 || Weighted;
+    Material mat;
+    Transform top;
+    bool was;
+
+    public static EscapePlate Create(Transform parent, string name, Vector3 local, float radius, Color color)
+    {
+        var root = new GameObject(name).transform;
+        root.SetParent(parent, false);
+        root.localPosition = local;
+        EscapeKit.Shape(PrimitiveType.Cylinder, root, "Aro", new Vector3(0, .03f, 0), new Vector3(radius * 2.25f, .03f, radius * 2.25f),
+            EscapeKit.Mat("Hierro", new Color(.3f, .32f, .36f)), false);
+        var p = root.gameObject.AddComponent<EscapePlate>();
+        p.radius = radius; p.color = color;
+        p.mat = EscapeKit.Glow(color, .35f);
+        p.top = EscapeKit.Shape(PrimitiveType.Cylinder, root, "Botón", new Vector3(0, .09f, 0), new Vector3(radius * 2f, .045f, radius * 2f), p.mat, false).transform;
+        return p;
+    }
+
+    public bool Contains(EscapeActor a)
+    {
+        if (a == null) return false;
+        Vector3 d = a.transform.position - transform.position;
+        return Mathf.Abs(d.y) < 1f && new Vector2(d.x, d.z).magnitude < radius;
+    }
+
+    public void Tick(List<EscapeActor> actors)
+    {
+        int c = 0;
+        if (actors != null) foreach (var a in actors) if (Contains(a)) c++;
+        Count = c;
+        bool now = Pressed;
+        if (now != was)
+        {
+            EscapeAudio.Play(now ? "plate_on" : "plate_off", transform.position, .6f);
+            was = now;
+        }
+        top.localPosition = Vector3.MoveTowards(top.localPosition, new Vector3(0, now ? .05f : .09f, 0), Time.deltaTime * .6f);
+        EscapeKit.SetGlow(mat, color, now ? 2.4f + Mathf.Sin(Time.time * 6f) * .3f : .3f);
+    }
+}
+
+/// <summary>A carryable object (key, power cell). Carried above the head; lying items can be picked up with E.</summary>
+public sealed class EscapeItem : MonoBehaviour
+{
+    public string kind, label;
+    public EscapeActor Carrier { get; private set; }
+    public EscapeInteractable Pick { get; private set; }
+    public Vector3 HomePosition { get; set; }
+
+    public static EscapeItem Create(Transform parent, string kind, string label, Vector3 local, Action<EscapeItem> build)
+    {
+        var go = new GameObject(label);
+        go.transform.SetParent(parent, false);
+        go.transform.localPosition = local;
+        var item = go.AddComponent<EscapeItem>();
+        item.kind = kind; item.label = label;
+        build?.Invoke(item);
+        item.Pick = EscapeInteractable.Add(go, "Recoger " + label, 0f, a => a.Give(item), a => a.Carried == null && item.Carrier == null, 1.5f);
+        item.HomePosition = go.transform.position;
+        go.AddComponent<EscapeSpin>().speed = 50f;
+        return item;
+    }
+
+    public void OnPicked(EscapeActor a)
+    {
+        Carrier = a;
+        Pick.enabled = false;
+        transform.SetParent(a.transform, false);
+        bool fp = a.IsHuman && !a.DrivenByBot && a.Director != null && a.Director.View != null && a.Director.View.FirstPerson;
+        // First person: hold it in the lower right of the view; others carry it above their heads.
+        transform.localPosition = fp ? new Vector3(.38f, 1.22f, .62f) : new Vector3(0, 2.2f, 0);
+        if (fp) transform.localScale = Vector3.one * .7f;
+        EscapeAudio.Play("key", a.transform.position, .8f);
+    }
+
+    public void OnDropped(Vector3 at)
+    {
+        Carrier = null;
+        transform.SetParent(null, true);
+        transform.position = at; transform.localScale = Vector3.one;
+        Pick.enabled = true;
+    }
+
+    public void Consume()
+    {
+        Carrier = null;
+        Pick.enabled = false;
+        Destroy(gameObject);
+    }
+}
+
+/// <summary>Sliding door between two rooms: sinks into the floor when the room is solved.</summary>
+public sealed class EscapeDoor : MonoBehaviour
+{
+    public bool IsOpen { get; private set; }
+    Transform panel;
+    Material lamp;
+    float t;
+    Vector3 closed;
+
+    public void Setup(Transform panel, Material lamp)
+    {
+        this.panel = panel; this.lamp = lamp; closed = panel.localPosition;
+        EscapeKit.SetGlow(lamp, new Color(1f, .25f, .3f), 2.2f);
+    }
+
+    public void Open()
+    {
+        if (IsOpen) return;
+        IsOpen = true;
+        foreach (var c in panel.GetComponentsInChildren<Collider>()) c.enabled = false;
+        EscapeKit.SetGlow(lamp, new Color(.3f, 1f, .55f), 2.6f);
+        EscapeAudio.Play("door", transform.position, 1f, 0f);
+    }
+
+    void Update()
+    {
+        if (!IsOpen || t >= 1f) return;
+        t = Mathf.Min(1f, t + Time.deltaTime / .9f);
+        float e = t * t * (3f - 2f * t);
+        panel.localPosition = closed + Vector3.down * (EscapeLevel.WallHeight + .15f) * e;
+        if (t >= 1f) panel.gameObject.SetActive(false);
+    }
+}

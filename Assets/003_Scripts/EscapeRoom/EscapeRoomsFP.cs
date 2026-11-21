@@ -74,7 +74,7 @@ public sealed class RoomClock : EscapeRoom
         EscapeKit.Shape(PrimitiveType.Cylinder, leverPivot, "Mango", new Vector3(0, .35f, 0), new Vector3(.08f, .35f, .08f), iron, false);
         EscapeKit.Shape(PrimitiveType.Sphere, leverPivot, "Pomo", new Vector3(0, .72f, 0), Vector3.one * .22f, P(new Color(.85f, .2f, .2f)), false);
         leverUse = EscapeInteractable.Add(leverPivot.gameObject, "Fijar la hora", 0f, Check, a => Active && Time.time >= lockedUntil, 2f);
-        leverUse.aimRadius = .45f;
+        leverUse.aimRadius = .45f; leverUse.markOffset = new Vector3(0, 1.05f, 0);
 
         // ---- the mirror on the right wall shows the reflected clock (no numbers: only marks and a gold top)
         var mc = new Vector3(EscapeFP.SideX - .05f, 2.1f, 1.5f);
@@ -92,8 +92,9 @@ public sealed class RoomClock : EscapeRoom
         }
         // Mirror image: the hands turn the other way round.
         float hShown = HourAngle(targetH, targetM), mShown = MinuteAngle(targetM);
-        Hand(mc + new Vector3(-.15f, .2f, 0), .36f, .06f, EscapeFP.Ink, true).localRotation = Quaternion.Euler(hShown, 0, 0);
-        Hand(mc + new Vector3(-.17f, .2f, 0), .52f, .035f, EscapeFP.Ink, true).localRotation = Quaternion.Euler(mShown, 0, 0);
+        var mirrorHour = Hand(mc + new Vector3(-.15f, .2f, 0), .36f, .06f, EscapeFP.Ink, true); mirrorHour.localRotation = Quaternion.Euler(hShown, 0, 0);
+        var mirrorMinute = Hand(mc + new Vector3(-.17f, .2f, 0), .52f, .035f, EscapeFP.Ink, true); mirrorMinute.localRotation = Quaternion.Euler(mShown, 0, 0);
+        Secret(mirrorHour); Secret(mirrorMinute);   // co-op: whoever pulls the lever cannot see the mirror's hands
         EscapeKit.Text(transform, "EL ESPEJO RECUERDA LA HORA\nEN QUE LA TORRE SE DURMIÓ", mc + new Vector3(-.04f, -1.72f, 0), EscapeFP.OnRight, .018f, EscapeFP.Ink);
 
         // ---- red herring: the night-watch clock on the left wall, stopped at a random time
@@ -165,6 +166,16 @@ public sealed class RoomClock : EscapeRoom
 
     protected override void OnSolved() => Confetti(W(new Vector3(-5.6f, 2.4f, 10f)), Accent, 60);
 
+    protected override EscapeInteractable BlindStation => leverUse;
+    public override string[] ReadAloud
+    {
+        get
+        {
+            int lo = 11 - targetH % 12, mark = (60 - targetM) / 5;
+            return new[] { $"En el espejo, la aguja corta está entre el {(lo == 0 ? 12 : lo)} y el {lo + 1}…", $"…y la larga apunta a la marca del {mark} (contando como en un reloj, el 12 arriba)." };
+        }
+    }
+
     public override EscapeOrder Order(EscapeActor a)
     {
         if (a.Role != 1 || !Assist(120f) || Time.time < lockedUntil) return Wait(a);
@@ -223,7 +234,7 @@ public sealed class RoomBells : EscapeRoom
             point.transform.localPosition = b.local + new Vector3(0, 3.3f - hgt - .1f, 0);
             var bb = b;
             b.use = EscapeInteractable.Add(point, "Tocar la campana", 0f, a => Ring(bb, a), a => Active, 2.3f);
-            b.use.maxBelow = 3.4f; b.use.aimRadius = .25f + s * .4f;
+            b.use.maxBelow = 3.4f; b.use.aimRadius = .25f + s * .4f; b.use.markOffset = new Vector3(0, -.45f, 0);
             bells.Add(b);
         }
 
@@ -374,7 +385,7 @@ public sealed class RoomMirrors : EscapeRoom
             m.yaw = m.state * 45f;
             var mm = m;
             m.use = EscapeInteractable.Add(pivot.gameObject, "Girar el espejo", 0f, a => Rotate(mm, a), a => Active, 2.1f);
-            m.use.aimRadius = .7f;
+            m.use.aimRadius = .7f; m.use.markOffset = new Vector3(0, .8f, 0);
             byPanel[m.panel] = m;
             mirrors.Add(m);
         }
@@ -493,7 +504,7 @@ public sealed class RoomCipher : EscapeRoom
         var sc = new Vector3(-5.4f, 2.2f, EscapeFP.ExitZ - .04f);
         Block("Pergamino", sc, new Vector3(4.4f, 1.6f, .05f), parchment, .02f, false);
         for (int s = -1; s <= 1; s += 2) EscapeKit.Shape(PrimitiveType.Cylinder, transform, "Rodillo", sc + new Vector3(0, s * .85f, -.04f), new Vector3(.14f, 2.35f, .14f), wood, false, new Vector3(0, 0, 90));
-        EscapeKit.Text(transform, string.Join(" ", secret.ToCharArray()), sc + new Vector3(0, -.05f, -.05f), EscapeFP.OnExit, .06f, EscapeFP.Ink);
+        Secret(EscapeKit.Text(transform, string.Join(" ", secret.ToCharArray()), sc + new Vector3(0, -.05f, -.05f), EscapeFP.OnExit, .06f, EscapeFP.Ink));
         EscapeKit.Text(transform, "LA PUERTA OBEDECE A LA PALABRA VERDADERA", sc + new Vector3(0, .55f, -.05f), EscapeFP.OnExit, .016f, EscapeFP.Ink);
 
         // Nine candles on the right wall shelf: only `shift` of them are lit.
@@ -533,7 +544,7 @@ public sealed class RoomCipher : EscapeRoom
         EscapeKit.Shape(PrimitiveType.Sphere, inner, "Pomo", new Vector3(.08f, 0, 0), Vector3.one * .25f, gold, false);
         Block("Flecha", wc + new Vector3(.05f, 1.62f, 0), new Vector3(.04f, .16f, .16f), gold, .01f, false, new Vector3(45, 0, 0));
         wheelUse = EscapeInteractable.Add(inner.gameObject, "Girar el disco interior", 0f, a => { wheel = (wheel + 1) % 26; Touch(a); EscapeAudio.Play("tick", inner.position, .6f); }, a => Active, 2.2f);
-        wheelUse.maxBelow = 3f; wheelUse.aimRadius = 1f;
+        wheelUse.maxBelow = 3f; wheelUse.aimRadius = 1f; wheelUse.markOffset = new Vector3(.12f, 1.85f, 0);
 
         // Lectern keypad near the exit.
         var pad = new Vector3(3.2f, 0, EscapeFP.ExitZ - 1.8f);
@@ -572,6 +583,9 @@ public sealed class RoomCipher : EscapeRoom
     }
 
     protected override void OnSolved() => Confetti(W(new Vector3(-5.4f, 2.2f, 10f)), Accent, 70);
+
+    protected override EscapeInteractable BlindStation => keypad;
+    public override string[] ReadAloud => new[] { "En el pergamino pone: " + string.Join(" ", secret.ToCharArray()) };
 
     public override EscapeOrder Order(EscapeActor a)
     {
@@ -642,7 +656,7 @@ public sealed class RoomSlider : EscapeRoom
             tiles[n] = t;
             int num = n;
             uses[n] = EscapeInteractable.Add(t.gameObject, "Deslizar la pieza " + n, 0f, a => Slide(num, a), a => Active && CanSlide(num), 2.5f);
-            uses[n].maxBelow = 3.6f; uses[n].aimRadius = .32f;
+            uses[n].maxBelow = 3.6f; uses[n].aimRadius = .32f; uses[n].markOffset = new Vector3(.27f, .27f, -.12f);
         }
         for (int c = 0; c < 9; c++) if (board[c] != 0) { tiles[board[c]].localPosition = CellPos(c); shown[board[c]] = CellPos(c); }
 
@@ -765,7 +779,7 @@ public sealed class RoomSymbols : EscapeRoom
     public override string[] Clues => new[]
     {
         "El tablero habla en formas, no en colores. Date la vuelta: el tapiz de la entrada traduce cada forma.",
-        "Una palanca sobra: su forma nunca aparece en el tablero. Quien lee puede dictar en voz alta a quien tira."
+        "Una palanca sobra: su forma nunca aparece en el tablero. Memoriza el orden en el atril antes de ir a las palancas."
     };
     public override Color Floor => new Color(.6f, .64f, .72f);
     public override Color Wall => new Color(.8f, .82f, .88f);
@@ -812,7 +826,7 @@ public sealed class RoomSymbols : EscapeRoom
             handles[k] = pivot; angles[k] = 35f;
             int idx = k;
             levers[k] = EscapeInteractable.Add(pivot.gameObject, $"Bajar la palanca {ColorNames[k]}", 0f, a => Pull(idx, a), a => Active && !down[idx], 2f);
-            levers[k].aimRadius = .5f;
+            levers[k].aimRadius = .5f; levers[k].markOffset = new Vector3(0, 1f, 0);
         }
 
         lectern = EscapePlate.Create(transform, "Atril", new Vector3(0, 0, -1.6f), .8f, new Color(1f, .95f, .78f));
@@ -884,10 +898,16 @@ public sealed class RoomSymbols : EscapeRoom
     {
         bool humanReading = !D.AutoHuman && lectern.Contains(D.Human);
         int reader = humanReading ? -1 : 1, puller = humanReading ? 1 : 2;
-        if (a.Role == reader) return EscapeOrder.Exact(lectern.transform.position);
+        var need = progress < 4 ? levers[colorOfSymbol[sequence[progress]]] : null;
+        if (a.Role == reader)
+        {
+            // Co-op: the reader may own the lever that comes next: it pulls it and goes back to read.
+            if (need != null && need.Mine(a) && Assist(110f)) return EscapeOrder.Use(need);
+            return EscapeOrder.Exact(lectern.transform.position);
+        }
         if (a.Role == puller)
         {
-            if (Assist(110f) && lectern.Pressed && progress < 4) return EscapeOrder.Use(levers[colorOfSymbol[sequence[progress]]]);
+            if (Assist(110f) && lectern.Pressed && need != null) return EscapeOrder.Use(need);
             return EscapeOrder.Go(W(new Vector3(0, 0, 2f)), .8f);
         }
         return Wait(a);

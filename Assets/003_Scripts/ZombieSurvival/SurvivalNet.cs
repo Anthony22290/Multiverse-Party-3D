@@ -31,7 +31,7 @@ public sealed class SurvivalNet : MonoBehaviour
         PartyLink.Listen(ChState, OnState);
         PartyLink.Listen(ChEvent, OnEvent);
         PartyLink.Listen(ChRequest, OnRequest);
-        PartyLink.MarkReady();
+        PartyLink.Fast(ChPose, ChState); PartyLink.MarkReady();
     }
 
     void OnDestroy() => PartyLink.Reset();

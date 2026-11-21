@@ -13,3 +13,26 @@ INFO INVASIÓN ZOMBI: listos=True · invitado en el hueco 1 · se movió 1,7 m �
 PASS Ronda resuelta: Cliente gana INVASIÓN ZOMBI · +1 punto
 INFO SALA DE ESCAPE: listos=True · invitado en el hueco 1 · se movió 4,6 m · fase Playing sala 1/11 resueltas 0 · invitado títere=True último dato hace 0,00 s acciones 0 resolvió 0 · salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal]
 PASS Ronda resuelta: ¡Cliente llega a 5 puntos!
+PASS Sala CL4677 creada y cliente lanzado (pid 38504)
+PASS Cliente se unió · miembros 2
+PASS Partida iniciada · 4 miembros (2 bots)
+INFO REY DE LA COLINA: listos=True · ping invitado 35 ms · invitado en el hueco 1 · se movió 0,0 m · 
+PASS Ronda resuelta: Cliente gana REY DE LA COLINA · +1 punto
+PASS Sala CL7119 creada y cliente lanzado (pid 3084)
+PASS Cliente se unió · miembros 2
+PASS Partida iniciada · 4 miembros (2 bots)
+INFO REY DE LA COLINA: listos=True · ping invitado 15 ms · invitado en el hueco 1 · se movió 0,0 m · fase Playing · invitado títere=True último dato hace 0,01 s
+PASS Ronda resuelta: Cliente gana REY DE LA COLINA · +1 punto
+INFO CARRERAS LOCAS: listos=True · ping invitado 22 ms · invitado en el hueco 1 · se movió 0,0 m · empezó True t 16,6 · kart invitado títere=True último dato hace 0,05 s · bots velocidad 21/28
+PASS Ronda resuelta: Cliente gana CARRERAS LOCAS · +1 punto
+INFO INVASIÓN ZOMBI: listos=True · ping invitado 26 ms · invitado en el hueco 1 · se movió 2,2 m · fase Break oleada 1 · invitado en red=True último dato hace 0,03 s vida 100 bajas 0 golpes 5 · zombis 0 piezas 1
+PASS Ronda resuelta: Cliente gana INVASIÓN ZOMBI · +1 punto
+PASS Sala CL8350 creada y cliente lanzado (pid 10480)
+PASS Cliente se unió · miembros 2
+PASS Partida iniciada · 4 miembros (2 bots)
+PASS Cliente se desconectó a mitad del minijuego · lo sustituye el bot Rayo · puntos del hueco 2
+PASS Cliente volvió y espera su sitio · sigue de bot mientras dura el minijuego: True · fase Playing
+INFO durante la espera: el hueco sigue siendo bot=True (Rayo)
+PASS recuperó su sitio: hueco 1 · nombre Cliente · puntos 2 (esperados 2)
+INFO REY DE LA COLINA: listos=True · ping invitado 28 ms · invitado en el hueco 1 · se movió 0,0 m · fase Playing · invitado títere=True último dato hace 0,00 s
+PASS Ronda resuelta: Cliente gana REY DE LA COLINA · +1 punto

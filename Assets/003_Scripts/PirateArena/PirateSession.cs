@@ -217,7 +217,7 @@ public sealed class PirateSession : MonoBehaviour
         canvas.GetComponent<Canvas>().renderMode = RenderMode.ScreenSpaceOverlay;
         canvas.GetComponent<Canvas>().sortingOrder = 100;
         var scaler = canvas.GetComponent<UnityEngine.UI.CanvasScaler>(); scaler.uiScaleMode = UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1280, 720); scaler.matchWidthOrHeight = 0.5f;
+        scaler.referenceResolution = new Vector2(1280, 720); scaler.matchWidthOrHeight = 0.5f; scaler.screenMatchMode = UnityEngine.UI.CanvasScaler.ScreenMatchMode.Expand;
         if (FindAnyObjectByType<EventSystem>() == null) new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule));
         panel = Rect("Arena menu", canvas.transform, Vector2.zero, new Vector2(1280, 720)).gameObject;
         var backdrop = panel.AddComponent<UnityEngine.UI.Image>();

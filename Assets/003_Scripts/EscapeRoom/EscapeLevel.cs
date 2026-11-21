@@ -42,6 +42,7 @@ public sealed class EscapeLevel : MonoBehaviour
         }
 #endif
         RoomTypes = Override != null && Override.Length > 0 ? Override : Draw();
+        director.SeedPuzzles();   // race: same rooms for everybody, own solutions for each player
         var root = new GameObject("Torre del Multiverso").transform;
         root.SetParent(transform, false);
         Shell = new GameObject("Estructura").transform;

@@ -51,7 +51,7 @@ public sealed class SurvivalPerkUI : MonoBehaviour
         director = d; font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
         var go = new GameObject("Mejoras roguelike", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
         var canvas = go.GetComponent<Canvas>(); canvas.renderMode = RenderMode.ScreenSpaceOverlay; canvas.sortingOrder = 40;
-        var sc = go.GetComponent<CanvasScaler>(); sc.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize; sc.referenceResolution = new Vector2(1280, 720); sc.matchWidthOrHeight = .5f;
+        var sc = go.GetComponent<CanvasScaler>(); sc.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize; sc.referenceResolution = new Vector2(1280, 720); sc.matchWidthOrHeight = .5f; sc.screenMatchMode = UnityEngine.UI.CanvasScaler.ScreenMatchMode.Expand;
         panel = Box("Elige una mejora", go.transform, new Vector2(0, -40), new Vector2(1000, 290), new Color(.08f, .16f, .08f, .95f));
         title = Label(panel.transform, new Vector2(0, 112), new Vector2(960, 40), 28, new Color(.7f, 1, .5f)); title.text = "ELIGE UNA MEJORA · 1 / 2 / 3";
         for (int i = 0; i < 3; i++)

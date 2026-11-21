@@ -1,222 +1,61 @@
-Cliente de prueba 12/11/2026 11:54:20 a. m.
-[5,0] MenuPrincipal · fase Lobby ronda 0 miembros 0 (humanos 0) yo=0 red=False semilla=0
-[7,3] MenuPrincipal · fase Lobby ronda 0 miembros 0 (humanos 0) yo=0 red=False semilla=0
-[8,1] UNIDO a CL4402
-[8,2] ESCENA MundoDeInicio
-[9,3] MundoDeInicio · fase Lobby ronda 0 miembros 2 (humanos 2) yo=1 red=True semilla=0
-[11,3] MundoDeInicio · fase Voting ronda 0 miembros 4 (humanos 2) yo=1 red=True semilla=0
-[13,3] MundoDeInicio · fase Voting ronda 0 miembros 4 (humanos 2) yo=1 red=True semilla=0
-[15,4] MundoDeInicio · fase Voting ronda 0 miembros 4 (humanos 2) yo=1 red=True semilla=0
-[17,4] MundoDeInicio · fase Voting ronda 0 miembros 4 (humanos 2) yo=1 red=True semilla=0
-[19,4] MundoDeInicio · fase Voting ronda 0 miembros 4 (humanos 2) yo=1 red=True semilla=0
-[21,4] MundoDeInicio · fase Playing ronda 1 miembros 4 (humanos 2) yo=1 red=True semilla=1659952438
-[23,4] MundoDeInicio · fase Playing ronda 1 miembros 4 (humanos 2) yo=1 red=True semilla=1659952438
-[25,4] MundoDeInicio · fase Playing ronda 1 miembros 4 (humanos 2) yo=1 red=True semilla=1659952438
-[25,8] ESCENA CodigoMortal
-[27,4] CodigoMortal · fase Playing ronda 1 miembros 4 (humanos 2) yo=1 red=True semilla=1659952438 | MORTAL cuenta 4,6 resto 240 vivos 4 títeres 3 con datos 3 códigos 4 fin=False
-[29,4] CodigoMortal · fase Playing ronda 1 miembros 4 (humanos 2) yo=1 red=True semilla=1659952438 | MORTAL cuenta 2,6 resto 240 vivos 4 títeres 3 con datos 3 códigos 4 fin=False
-[31,4] CodigoMortal · fase Playing ronda 1 miembros 4 (humanos 2) yo=1 red=True semilla=1659952438 | MORTAL cuenta 0,6 resto 240 vivos 4 títeres 3 con datos 3 códigos 4 fin=False
-[33,5] CodigoMortal · fase Playing ronda 1 miembros 4 (humanos 2) yo=1 red=True semilla=1659952438 | MORTAL cuenta 0,0 resto 239 vivos 4 títeres 3 con datos 3 códigos 4 fin=False
-[35,5] CodigoMortal · fase Playing ronda 1 miembros 4 (humanos 2) yo=1 red=True semilla=1659952438 | MORTAL cuenta 0,0 resto 237 vivos 4 títeres 3 con datos 3 códigos 4 fin=False
-[37,5] CodigoMortal · fase Playing ronda 1 miembros 4 (humanos 2) yo=1 red=True semilla=1659952438 | MORTAL cuenta 0,0 resto 235 vivos 4 títeres 3 con datos 3 códigos 4 fin=False
-[39,5] CodigoMortal · fase Playing ronda 1 miembros 4 (humanos 2) yo=1 red=True semilla=1659952438 | MORTAL cuenta 0,0 resto 233 vivos 4 títeres 3 con datos 3 códigos 4 fin=False
-[41,5] CodigoMortal · fase Playing ronda 1 miembros 4 (humanos 2) yo=1 red=True semilla=1659952438 | MORTAL cuenta 0,0 resto 231 vivos 4 títeres 3 con datos 3 códigos 4 fin=False
-[43,5] CodigoMortal · fase Playing ronda 1 miembros 4 (humanos 2) yo=1 red=True semilla=1659952438 | MORTAL cuenta 0,0 resto 229 vivos 4 títeres 3 con datos 3 códigos 4 fin=False
-[45,5] CodigoMortal · fase Playing ronda 1 miembros 4 (humanos 2) yo=1 red=True semilla=1659952438 | MORTAL cuenta 0,0 resto 227 vivos 4 títeres 3 con datos 3 códigos 4 fin=False
-[47,5] CodigoMortal · fase Results ronda 1 miembros 4 (humanos 2) yo=1 red=True semilla=1659952438 | MORTAL cuenta 0,0 resto 225 vivos 4 títeres 3 con datos 3 códigos 4 fin=False
-[49,5] CodigoMortal · fase Results ronda 1 miembros 4 (humanos 2) yo=1 red=True semilla=1659952438 | MORTAL cuenta 0,0 resto 223 vivos 4 títeres 3 con datos 3 códigos 4 fin=False
-[51,5] CodigoMortal · fase Results ronda 1 miembros 4 (humanos 2) yo=1 red=True semilla=1659952438 | MORTAL cuenta 0,0 resto 221 vivos 4 títeres 3 con datos 3 códigos 4 fin=False
-[53,5] CodigoMortal · fase Results ronda 1 miembros 4 (humanos 2) yo=1 red=True semilla=1659952438 | MORTAL cuenta 0,0 resto 219 vivos 4 títeres 3 con datos 3 códigos 4 fin=False
-[55,5] CodigoMortal · fase Results ronda 1 miembros 4 (humanos 2) yo=1 red=True semilla=1659952438 | MORTAL cuenta 0,0 resto 216 vivos 4 títeres 3 con datos 3 códigos 4 fin=False
-[57,3] ESCENA MundoDeInicio
-[57,5] MundoDeInicio · fase Voting ronda 1 miembros 4 (humanos 2) yo=1 red=True semilla=1659952438
-[59,6] MundoDeInicio · fase Playing ronda 2 miembros 4 (humanos 2) yo=1 red=True semilla=2022043032
-[61,6] MundoDeInicio · fase Playing ronda 2 miembros 4 (humanos 2) yo=1 red=True semilla=2022043032
-[63,6] MundoDeInicio · fase Playing ronda 2 miembros 4 (humanos 2) yo=1 red=True semilla=2022043032
-[63,6] ESCENA CarrerasLocas
-[65,6] CarrerasLocas · fase Playing ronda 2 miembros 4 (humanos 2) yo=1 red=True semilla=2022043032 | CARRERA empezó True t 0,0 títeres 3 vel títeres 0/0/0 vueltas 1:0/1:0/1:0/1:0 fin=False
-[67,6] CarrerasLocas · fase Playing ronda 2 miembros 4 (humanos 2) yo=1 red=True semilla=2022043032 | CARRERA empezó True t 0,0 títeres 3 vel títeres 0/0/0 vueltas 1:0/1:0/1:0/1:0 fin=False
-[69,6] CarrerasLocas · fase Playing ronda 2 miembros 4 (humanos 2) yo=1 red=True semilla=2022043032 | CARRERA empezó True t 1,4 títeres 3 vel títeres 0/13/13 vueltas 1:0/1:0/1:0/1:0 fin=False
-[71,6] CarrerasLocas · fase Playing ronda 2 miembros 4 (humanos 2) yo=1 red=True semilla=2022043032 | CARRERA empezó True t 3,4 títeres 3 vel títeres 13/4/29 vueltas 1:0/1:1/1:0/1:2 fin=False
-[73,6] CarrerasLocas · fase Playing ronda 2 miembros 4 (humanos 2) yo=1 red=True semilla=2022043032 | CARRERA empezó True t 5,4 títeres 3 vel títeres 29/1/28 vueltas 1:2/1:1/1:1/1:5 fin=False
-[75,6] CarrerasLocas · fase Playing ronda 2 miembros 4 (humanos 2) yo=1 red=True semilla=2022043032 | CARRERA empezó True t 7,4 títeres 3 vel títeres 27/0/28 vueltas 1:4/1:1/1:1/1:7 fin=False
-[77,6] CarrerasLocas · fase Playing ronda 2 miembros 4 (humanos 2) yo=1 red=True semilla=2022043032 | CARRERA empezó True t 9,4 títeres 3 vel títeres 27/0/28 vueltas 1:7/1:1/1:1/1:9 fin=False
-[79,6] CarrerasLocas · fase Playing ronda 2 miembros 4 (humanos 2) yo=1 red=True semilla=2022043032 | CARRERA empezó True t 11,4 títeres 3 vel títeres 2/0/28 vueltas 1:9/1:1/1:1/1:11 fin=False
-[81,6] CarrerasLocas · fase Playing ronda 2 miembros 4 (humanos 2) yo=1 red=True semilla=2022043032 | CARRERA empezó True t 13,4 títeres 3 vel títeres 0/0/28 vueltas 1:9/1:1/1:1/1:13 fin=False
-[83,6] CarrerasLocas · fase Playing ronda 2 miembros 4 (humanos 2) yo=1 red=True semilla=2022043032 | CARRERA empezó True t 15,4 títeres 3 vel títeres 12/0/11 vueltas 1:9/1:1/1:1/1:15 fin=False
-[85,6] CarrerasLocas · fase Playing ronda 2 miembros 4 (humanos 2) yo=1 red=True semilla=2022043032 | CARRERA empezó True t 17,4 títeres 3 vel títeres 1/0/28 vueltas 1:11/1:1/1:1/1:17 fin=False
-[87,6] CarrerasLocas · fase Results ronda 2 miembros 4 (humanos 2) yo=1 red=True semilla=2022043032 | CARRERA empezó True t 19,4 títeres 3 vel títeres 0/0/0 vueltas 1:11/1:1/1:1/1:18 fin=False
-[89,6] CarrerasLocas · fase Results ronda 2 miembros 4 (humanos 2) yo=1 red=True semilla=2022043032 | CARRERA empezó True t 21,5 títeres 3 vel títeres 4/0/9 vueltas 1:11/1:1/1:1/1:18 fin=False
-[91,6] CarrerasLocas · fase Results ronda 2 miembros 4 (humanos 2) yo=1 red=True semilla=2022043032 | CARRERA empezó True t 23,5 títeres 3 vel títeres 23/0/7 vueltas 1:11/1:1/1:1/1:18 fin=False
-[93,6] CarrerasLocas · fase Results ronda 2 miembros 4 (humanos 2) yo=1 red=True semilla=2022043032 | CARRERA empezó True t 25,5 títeres 3 vel títeres 27/0/8 vueltas 1:13/1:1/1:1/1:18 fin=False
-[95,6] CarrerasLocas · fase Results ronda 2 miembros 4 (humanos 2) yo=1 red=True semilla=2022043032 | CARRERA empezó True t 27,5 títeres 3 vel títeres 8/0/28 vueltas 1:15/1:1/1:1/1:20 fin=False
-[97,0] ESCENA MundoDeInicio
-[97,6] MundoDeInicio · fase Voting ronda 2 miembros 4 (humanos 2) yo=1 red=True semilla=2022043032
-[99,6] MundoDeInicio · fase Voting ronda 2 miembros 4 (humanos 2) yo=1 red=True semilla=2022043032
-[101,7] MundoDeInicio · fase Voting ronda 2 miembros 4 (humanos 2) yo=1 red=True semilla=2022043032
-[103,7] MundoDeInicio · fase Playing ronda 3 miembros 4 (humanos 2) yo=1 red=True semilla=1220939104
-[105,7] MundoDeInicio · fase Playing ronda 3 miembros 4 (humanos 2) yo=1 red=True semilla=1220939104
-[106,6] ESCENA ArenaDelCaos
-[107,7] ArenaDelCaos · fase Playing ronda 3 miembros 4 (humanos 2) yo=1 red=True semilla=1220939104 | ARENA jugando False fin False cuenta 3,0 pos 3,3,-3,2 1,7,-0,1 -1,7,-0,1 -3,3,-3,2
-[109,7] ArenaDelCaos · fase Playing ronda 3 miembros 4 (humanos 2) yo=1 red=True semilla=1220939104 | ARENA jugando False fin False cuenta 1,1 pos 1,5,-0,7 3,2,-3,2 -1,9,-0,9 -3,3,-4,3
-[111,7] ArenaDelCaos · fase Playing ronda 3 miembros 4 (humanos 2) yo=1 red=True semilla=1220939104 | ARENA jugando True fin False cuenta 0,0 pos 1,4,-0,8 2,5,-3,2 0,5,-1,0 -2,3,-2,1
-[113,7] ArenaDelCaos · fase Playing ronda 3 miembros 4 (humanos 2) yo=1 red=True semilla=1220939104 | ARENA jugando True fin False cuenta 0,0 pos 3,4,-0,2 2,9,-3,6 1,9,-2,4 0,7,-1,1
-[115,7] ArenaDelCaos · fase Playing ronda 3 miembros 4 (humanos 2) yo=1 red=True semilla=1220939104 | ARENA jugando True fin False cuenta 0,0 pos 3,3,-0,2 3,7,-5,8 5,7,-1,6 1,1,-5,1
-[117,7] ArenaDelCaos · fase Playing ronda 3 miembros 4 (humanos 2) yo=1 red=True semilla=1220939104 | ARENA jugando True fin False cuenta 0,0 pos 3,3,-0,2 4,9,-5,8 6,7,-1,4 2,4,-6,7
-[119,7] ArenaDelCaos · fase Playing ronda 3 miembros 4 (humanos 2) yo=1 red=True semilla=1220939104 | ARENA jugando True fin False cuenta 0,0 pos 3,1,2,6 5,7,-6,1 12,1,-1,8 5,0,-6,0
-[121,7] ArenaDelCaos · fase Playing ronda 3 miembros 4 (humanos 2) yo=1 red=True semilla=1220939104 | ARENA jugando True fin False cuenta 0,0 pos 3,1,1,2 5,2,-3,0 12,7,-1,7 5,0,-3,9
-[123,7] ArenaDelCaos · fase Playing ronda 3 miembros 4 (humanos 2) yo=1 red=True semilla=1220939104 | ARENA jugando True fin False cuenta 0,0 pos 3,1,0,9 10,8,0,3 12,9,-1,7 4,2,-1,0
-[125,7] ArenaDelCaos · fase Playing ronda 3 miembros 4 (humanos 2) yo=1 red=True semilla=1220939104 | ARENA jugando True fin False cuenta 0,0 pos 4,4,-0,6 12,1,0,6 12,9,-1,7 3,6,-0,7
-[127,7] ArenaDelCaos · fase Results ronda 3 miembros 4 (humanos 2) yo=1 red=True semilla=1220939104 | ARENA jugando True fin False cuenta 0,0 pos 3,3,-1,2 12,2,1,0 12,9,-1,7 -2,2,-6,0
-[129,8] ArenaDelCaos · fase Results ronda 3 miembros 4 (humanos 2) yo=1 red=True semilla=1220939104 | ARENA jugando True fin False cuenta 0,0 pos 0,6,-2,0 12,2,1,0 12,9,-1,7 1,1,-2,7
-[131,8] ArenaDelCaos · fase Results ronda 3 miembros 4 (humanos 2) yo=1 red=True semilla=1220939104 | ARENA jugando True fin False cuenta 0,0 pos -1,7,-6,7 12,2,1,0 12,9,-1,7 -1,7,-5,8
-[133,8] ArenaDelCaos · fase Results ronda 3 miembros 4 (humanos 2) yo=1 red=True semilla=1220939104 | ARENA jugando True fin False cuenta 0,0 pos -5,5,-3,7 12,2,1,0 12,9,-1,7 -4,1,-4,2
-[135,8] ArenaDelCaos · fase Voting ronda 3 miembros 4 (humanos 2) yo=1 red=True semilla=1220939104 | ARENA jugando False fin True cuenta 0,0 pos -11,5,-2,1 12,2,1,0 12,9,-1,7 -4,7,-2,2
-[136,1] ESCENA MundoDeInicio
-[137,8] MundoDeInicio · fase Playing ronda 4 miembros 4 (humanos 2) yo=1 red=True semilla=2136724354
-[139,8] MundoDeInicio · fase Playing ronda 4 miembros 4 (humanos 2) yo=1 red=True semilla=2136724354
-[141,6] ESCENA InvasionZombi
-[141,8] InvasionZombi · fase Playing ronda 4 miembros 4 (humanos 2) yo=1 red=True semilla=2136724354 | ZOMBI fase Countdown oleada 0 zombis 0 quedan 0 piezas 0 vida 100/100/100/100 bajas 0 aviso ''
-[143,8] InvasionZombi · fase Playing ronda 4 miembros 4 (humanos 2) yo=1 red=True semilla=2136724354 | ZOMBI fase Countdown oleada 0 zombis 0 quedan 0 piezas 0 vida 100/100/100/100 bajas 0 aviso ''
-[145,8] InvasionZombi · fase Playing ronda 4 miembros 4 (humanos 2) yo=1 red=True semilla=2136724354 | ZOMBI fase Countdown oleada 0 zombis 0 quedan 0 piezas 0 vida 100/100/100/100 bajas 0 aviso ''
-[147,9] InvasionZombi · fase Playing ronda 4 miembros 4 (humanos 2) yo=1 red=True semilla=2136724354 | ZOMBI fase Wave oleada 1 zombis 1 quedan 7 piezas 0 vida 100/100/100/100 bajas 0 aviso 'OLEADA 1/10 · ¡QUE VIENEN!'
-[149,9] InvasionZombi · fase Playing ronda 4 miembros 4 (humanos 2) yo=1 red=True semilla=2136724354 | ZOMBI fase Wave oleada 1 zombis 4 quedan 7 piezas 0 vida 100/100/100/100 bajas 0 aviso '¡Un zombi brillante lleva: RUEDA DELANTERA!'
-[151,9] InvasionZombi · fase Playing ronda 4 miembros 4 (humanos 2) yo=1 red=True semilla=2136724354 | ZOMBI fase Wave oleada 1 zombis 5 quedan 7 piezas 0 vida 100/100/100/100 bajas 0 aviso '¡Un zombi brillante lleva: RUEDA DELANTERA!'
-[153,9] InvasionZombi · fase Playing ronda 4 miembros 4 (humanos 2) yo=1 red=True semilla=2136724354 | ZOMBI fase Wave oleada 1 zombis 7 quedan 7 piezas 0 vida 100/100/100/100 bajas 0 aviso ''
-[155,9] InvasionZombi · fase Playing ronda 4 miembros 4 (humanos 2) yo=1 red=True semilla=2136724354 | ZOMBI fase Wave oleada 1 zombis 7 quedan 7 piezas 0 vida 100/100/100/100 bajas 0 aviso ''
-[157,9] InvasionZombi · fase Playing ronda 4 miembros 4 (humanos 2) yo=1 red=True semilla=2136724354 | ZOMBI fase Wave oleada 1 zombis 6 quedan 6 piezas 0 vida 100/100/100/100 bajas 1 aviso ''
-[159,9] InvasionZombi · fase Playing ronda 4 miembros 4 (humanos 2) yo=1 red=True semilla=2136724354 | ZOMBI fase Wave oleada 1 zombis 5 quedan 5 piezas 0 vida 100/100/100/100 bajas 2 aviso ''
-[161,9] InvasionZombi · fase Playing ronda 4 miembros 4 (humanos 2) yo=1 red=True semilla=2136724354 | ZOMBI fase Wave oleada 1 zombis 5 quedan 5 piezas 0 vida 100/100/100/100 bajas 2 aviso ''
-[163,9] InvasionZombi · fase Playing ronda 4 miembros 4 (humanos 2) yo=1 red=True semilla=2136724354 | ZOMBI fase Wave oleada 1 zombis 5 quedan 5 piezas 0 vida 100/100/100/100 bajas 2 aviso ''
-[165,9] InvasionZombi · fase Playing ronda 4 miembros 4 (humanos 2) yo=1 red=True semilla=2136724354 | ZOMBI fase Wave oleada 1 zombis 5 quedan 5 piezas 0 vida 100/100/100/100 bajas 2 aviso ''
-[167,9] InvasionZombi · fase Playing ronda 4 miembros 4 (humanos 2) yo=1 red=True semilla=2136724354 | ZOMBI fase Wave oleada 1 zombis 4 quedan 4 piezas 0 vida 100/100/100/100 bajas 3 aviso '¡Ha caído: RUEDA DELANTERA!  ·  Llévala a la camioneta'
-[169,9] InvasionZombi · fase Playing ronda 4 miembros 4 (humanos 2) yo=1 red=True semilla=2136724354 | ZOMBI fase Wave oleada 1 zombis 2 quedan 2 piezas 0 vida 100/90/100/100 bajas 5 aviso ''
-[172,0] InvasionZombi · fase Playing ronda 4 miembros 4 (humanos 2) yo=1 red=True semilla=2136724354 | ZOMBI fase Break oleada 1 zombis 0 quedan 0 piezas 1 vida 100/100/100/100 bajas 7 aviso '¡OLEADA 1 SUPERADA!  ·  Camioneta 1/10'
-[174,0] InvasionZombi · fase Playing ronda 4 miembros 4 (humanos 2) yo=1 red=True semilla=2136724354 | ZOMBI fase Break oleada 1 zombis 0 quedan 0 piezas 1 vida 100/100/100/100 bajas 7 aviso '¡OLEADA 1 SUPERADA!  ·  Camioneta 1/10'
-[176,0] InvasionZombi · fase Playing ronda 4 miembros 4 (humanos 2) yo=1 red=True semilla=2136724354 | ZOMBI fase Break oleada 1 zombis 0 quedan 0 piezas 1 vida 100/100/100/100 bajas 7 aviso ''
-[178,0] InvasionZombi · fase Playing ronda 4 miembros 4 (humanos 2) yo=1 red=True semilla=2136724354 | ZOMBI fase Break oleada 1 zombis 0 quedan 0 piezas 1 vida 100/100/100/100 bajas 7 aviso ''
-[180,0] InvasionZombi · fase Playing ronda 4 miembros 4 (humanos 2) yo=1 red=True semilla=2136724354 | ZOMBI fase Break oleada 1 zombis 0 quedan 0 piezas 1 vida 100/100/100/100 bajas 7 aviso ''
-[182,0] InvasionZombi · fase Playing ronda 4 miembros 4 (humanos 2) yo=1 red=True semilla=2136724354 | ZOMBI fase Wave oleada 2 zombis 5 quedan 10 piezas 1 vida 100/100/100/100 bajas 7 aviso 'OLEADA 2 · La pieza está en LA GASOLINERA, custodiada. ¡Id a por ella!'
-[184,0] InvasionZombi · fase Results ronda 4 miembros 4 (humanos 2) yo=1 red=True semilla=2136724354 | ZOMBI fase Wave oleada 2 zombis 7 quedan 10 piezas 1 vida 100/100/100/100 bajas 7 aviso ''
-[186,0] InvasionZombi · fase Results ronda 4 miembros 4 (humanos 2) yo=1 red=True semilla=2136724354 | ZOMBI fase Wave oleada 2 zombis 9 quedan 10 piezas 1 vida 100/100/100/100 bajas 7 aviso ''
-[188,0] InvasionZombi · fase Results ronda 4 miembros 4 (humanos 2) yo=1 red=True semilla=2136724354 | ZOMBI fase Wave oleada 2 zombis 8 quedan 9 piezas 1 vida 100/100/100/100 bajas 11 aviso ''
-[190,0] InvasionZombi · fase Results ronda 4 miembros 4 (humanos 2) yo=1 red=True semilla=2136724354 | ZOMBI fase Wave oleada 2 zombis 8 quedan 8 piezas 1 vida 100/100/100/100 bajas 12 aviso '¡Ha caído: RUEDA TRASERA!  ·  Llévala a la camioneta'
-[192,0] InvasionZombi · fase Voting ronda 4 miembros 4 (humanos 2) yo=1 red=True semilla=2136724354 | ZOMBI fase Wave oleada 2 zombis 6 quedan 6 piezas 1 vida 100/100/100/100 bajas 14 aviso 'Llevas: RUEDA TRASERA  ·  A la camioneta y mantén E'
-[192,9] ESCENA MundoDeInicio
-[194,0] MundoDeInicio · fase Voting ronda 4 miembros 4 (humanos 2) yo=1 red=True semilla=2136724354
-[196,0] MundoDeInicio · fase Playing ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[198,0] MundoDeInicio · fase Playing ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[198,7] ESCENA SalaDeEscape
-[200,0] SalaDeEscape · fase Playing ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Countdown sala 1/11 resueltas 0 t 0 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso 'Esperando al anfitrión…'
-[202,1] SalaDeEscape · fase Playing ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Countdown sala 1/11 resueltas 0 t 0 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso ''
-[204,1] SalaDeEscape · fase Playing ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Playing sala 1/11 resueltas 0 t 1 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso '¡A ESCAPAR DE LA TORRE!'
-[206,1] SalaDeEscape · fase Playing ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Playing sala 1/11 resueltas 0 t 3 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso '¡A ESCAPAR DE LA TORRE!'
-[208,1] SalaDeEscape · fase Playing ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Playing sala 1/11 resueltas 0 t 5 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso ''
-[210,1] SalaDeEscape · fase Playing ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Playing sala 1/11 resueltas 0 t 7 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso ''
-[212,1] SalaDeEscape · fase Playing ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Playing sala 1/11 resueltas 0 t 9 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso ''
-[214,1] SalaDeEscape · fase Playing ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Playing sala 1/11 resueltas 0 t 11 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso ''
-[216,1] SalaDeEscape · fase Playing ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Playing sala 1/11 resueltas 0 t 13 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso ''
-[218,1] SalaDeEscape · fase Playing ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Playing sala 1/11 resueltas 0 t 15 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso ''
-[220,1] SalaDeEscape · fase Playing ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Playing sala 1/11 resueltas 0 t 17 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso ''
-[222,1] SalaDeEscape · fase Playing ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Playing sala 1/11 resueltas 0 t 19 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso ''
-[224,1] SalaDeEscape · fase Playing ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Playing sala 1/11 resueltas 0 t 21 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso ''
-[226,1] SalaDeEscape · fase Playing ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Playing sala 1/11 resueltas 0 t 23 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso ''
-[228,2] SalaDeEscape · fase Playing ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Playing sala 1/11 resueltas 0 t 25 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso ''
-[230,2] SalaDeEscape · fase Playing ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Playing sala 1/11 resueltas 0 t 27 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso ''
-[232,2] SalaDeEscape · fase Playing ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Playing sala 1/11 resueltas 0 t 29 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso ''
-[234,2] SalaDeEscape · fase Playing ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Playing sala 1/11 resueltas 0 t 31 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso ''
-[236,2] SalaDeEscape · fase Playing ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Playing sala 1/11 resueltas 0 t 33 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso ''
-[238,2] SalaDeEscape · fase Playing ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Playing sala 1/11 resueltas 0 t 35 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso ''
-[240,2] SalaDeEscape · fase Playing ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Playing sala 1/11 resueltas 0 t 37 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso ''
-[242,2] SalaDeEscape · fase Playing ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Playing sala 1/11 resueltas 0 t 39 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso ''
-[244,2] SalaDeEscape · fase Playing ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Playing sala 1/11 resueltas 0 t 41 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso ''
-[246,2] SalaDeEscape · fase Playing ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Playing sala 1/11 resueltas 0 t 43 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso ''
-[248,2] SalaDeEscape · fase Playing ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Playing sala 1/11 resueltas 0 t 45 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso ''
-[250,2] SalaDeEscape · fase Playing ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Playing sala 1/11 resueltas 0 t 47 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso ''
-[252,2] SalaDeEscape · fase Playing ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Playing sala 1/11 resueltas 0 t 49 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso ''
-[254,2] SalaDeEscape · fase Playing ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Playing sala 1/11 resueltas 0 t 51 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso ''
-[256,2] SalaDeEscape · fase Playing ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Playing sala 1/11 resueltas 0 t 53 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso ''
-[258,2] SalaDeEscape · fase Playing ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Playing sala 1/11 resueltas 0 t 55 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso ''
-[260,2] SalaDeEscape · fase Playing ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Playing sala 1/11 resueltas 0 t 57 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso ''
-[262,2] SalaDeEscape · fase Playing ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Playing sala 1/11 resueltas 0 t 59 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso ''
-[264,2] SalaDeEscape · fase Playing ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Playing sala 1/11 resueltas 0 t 61 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso ''
-[266,2] SalaDeEscape · fase Playing ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Playing sala 1/11 resueltas 0 t 63 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso ''
-[268,2] SalaDeEscape · fase Playing ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Playing sala 1/11 resueltas 0 t 65 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso ''
-[270,2] SalaDeEscape · fase Results ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Playing sala 1/11 resueltas 0 t 67 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso ''
-[272,2] SalaDeEscape · fase Results ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Playing sala 1/11 resueltas 0 t 69 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso ''
-[274,2] SalaDeEscape · fase Results ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Playing sala 1/11 resueltas 0 t 71 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso ''
-[276,2] SalaDeEscape · fase Results ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Playing sala 1/11 resueltas 0 t 73 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso ''
-[278,2] SalaDeEscape · fase Results ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Playing sala 1/11 resueltas 0 t 75 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso ''
-[280,2] SalaDeEscape · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391 | ESCAPE fase Playing sala 1/11 resueltas 0 t 77 salas [Jugs,Tiles,Mirrors,Numbers,Clock,Pipes,Braziers,Cipher,Bells,Slider,Portal] títeres 3 aviso ''
-[280,2] ESCENA MundoDeInicio
-[282,2] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[284,2] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[286,2] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[288,2] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[290,2] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[292,2] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[294,2] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[296,2] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[298,2] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[300,2] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[302,2] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[304,2] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[306,2] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[308,2] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[310,2] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[312,2] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[314,2] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[316,2] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[318,2] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[320,2] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[322,2] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[324,2] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[326,2] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[328,2] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[330,2] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[332,2] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[334,2] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[336,2] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[338,2] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[340,2] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[342,2] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[344,2] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[346,2] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[348,3] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[350,3] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[352,3] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[354,3] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[356,3] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[358,3] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[360,3] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[362,3] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[364,3] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[366,3] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[368,3] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[370,3] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[372,3] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[374,3] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[376,3] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[378,3] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[380,3] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[382,3] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[384,3] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[386,3] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[388,3] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[390,3] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[392,3] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[394,3] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[396,3] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[398,3] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[400,3] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[402,3] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[404,3] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[406,3] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[408,3] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[410,3] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[412,3] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[414,3] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[416,3] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[418,3] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[420,3] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
-[422,3] MundoDeInicio · fase Champion ronda 5 miembros 4 (humanos 2) yo=1 red=True semilla=1231293391
+Cliente de prueba 21/11/2026 12:57:34 a. m.
+[4,5] MenuPrincipal
+[8,7] MenuPrincipal
+[10,8] MenuPrincipal
+[10,9] LISTA DE SALAS: encontrada CL8350 · anfitrión Anfitrion · 1/4 · jugando=False (total 1)
+[12,8] MenuPrincipal · fase Lobby ronda 0 miembros 0 (humanos 0) yo=0 sentado=False red=False semilla=0 ping=-1
+[14,8] MenuPrincipal · fase Lobby ronda 0 miembros 0 (humanos 0) yo=0 sentado=False red=False semilla=0 ping=-1
+[15,0] UNIDO a CL8350
+[15,1] ESCENA MundoDeInicio
+[16,8] MundoDeInicio · fase Lobby ronda 0 miembros 2 (humanos 2) yo=1 sentado=True red=True semilla=0 ping=87
+[18,9] MundoDeInicio · fase Voting ronda 0 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=0 ping=333
+[20,9] MundoDeInicio · fase Voting ronda 0 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=0 ping=94
+[22,9] MundoDeInicio · fase Voting ronda 0 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=0 ping=55
+[24,9] MundoDeInicio · fase Voting ronda 0 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=0 ping=43
+[27,0] MundoDeInicio · fase Voting ronda 0 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=0 ping=61
+[29,0] MundoDeInicio · fase Voting ronda 0 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=0 ping=41
+[31,0] MundoDeInicio · fase Playing ronda 1 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=232543765 ping=51
+[33,0] MundoDeInicio · fase Playing ronda 1 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=232543765 ping=47
+[34,7] ESCENA ReyColina
+[35,3] ReyColina · fase Playing ronda 1 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=232543765 ping=42 | COLINA fase Waiting cuenta 4,0 t 0,0 títeres con datos 0/3
+[37,4] ReyColina · fase Playing ronda 1 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=232543765 ping=47 | COLINA fase Waiting cuenta 4,0 t 0,0 títeres con datos 3/3
+[39,4] ReyColina · fase Playing ronda 1 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=232543765 ping=39 | COLINA fase Countdown cuenta 2,4 t 0,0 títeres con datos 3/3
+[41,4] ReyColina · fase Playing ronda 1 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=232543765 ping=41 | COLINA fase Countdown cuenta 0,3 t 0,0 títeres con datos 3/3
+[43,4] ReyColina · fase Playing ronda 1 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=232543765 ping=27 | COLINA fase Playing cuenta 0,0 t 1,8 títeres con datos 3/3
+[43,7] PRUEBA: me desconecto a mitad del minijuego
+[44,1] ESCENA MenuPrincipal
+[45,5] MenuPrincipal
+[47,5] MenuPrincipal · fase Lobby ronda 0 miembros 0 (humanos 0) yo=0 sentado=False red=False semilla=0 ping=-1
+[48,9] UNIDO a CL8350
+[49,0] ESCENA MundoDeInicio
+[49,5] MundoDeInicio · fase Playing ronda 1 miembros 4 (humanos 1) yo=0 sentado=False red=True semilla=232543765 ping=0
+[51,5] MundoDeInicio · fase Playing ronda 1 miembros 4 (humanos 1) yo=0 sentado=False red=True semilla=232543765 ping=0
+[53,5] MundoDeInicio · fase Results ronda 1 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=232543765 ping=-1
+[55,5] MundoDeInicio · fase Results ronda 1 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=232543765 ping=32
+[57,5] MundoDeInicio · fase Results ronda 1 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=232543765 ping=44
+[59,6] MundoDeInicio · fase Results ronda 1 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=232543765 ping=38
+[61,6] MundoDeInicio · fase Results ronda 1 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=232543765 ping=36
+[63,6] MundoDeInicio · fase Voting ronda 1 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=232543765 ping=98
+[65,7] MundoDeInicio · fase Voting ronda 1 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=232543765 ping=98
+[67,7] MundoDeInicio · fase Voting ronda 1 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=232543765 ping=176
+[69,7] MundoDeInicio · fase Playing ronda 2 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=632117307 ping=85
+[71,7] MundoDeInicio · fase Playing ronda 2 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=632117307 ping=59
+[73,2] ESCENA ReyColina
+[73,8] ReyColina · fase Playing ronda 2 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=632117307 ping=50 | COLINA fase Waiting cuenta 4,0 t 0,0 títeres con datos 0/3
+[75,8] ReyColina · fase Playing ronda 2 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=632117307 ping=44 | COLINA fase Waiting cuenta 4,0 t 0,0 títeres con datos 3/3
+[77,8] ReyColina · fase Playing ronda 2 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=632117307 ping=34 | COLINA fase Countdown cuenta 2,4 t 0,0 títeres con datos 3/3
+[79,8] ReyColina · fase Playing ronda 2 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=632117307 ping=35 | COLINA fase Countdown cuenta 0,5 t 0,0 títeres con datos 3/3
+[81,8] ReyColina · fase Playing ronda 2 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=632117307 ping=28 | COLINA fase Playing cuenta 0,0 t 1,7 títeres con datos 3/3
+[83,8] ReyColina · fase Playing ronda 2 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=632117307 ping=30 | COLINA fase Playing cuenta 0,0 t 3,7 títeres con datos 3/3
+[85,9] ReyColina · fase Playing ronda 2 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=632117307 ping=27 | COLINA fase Playing cuenta 0,0 t 5,7 títeres con datos 3/3
+[87,9] ReyColina · fase Playing ronda 2 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=632117307 ping=27 | COLINA fase Playing cuenta 0,0 t 7,7 títeres con datos 3/3
+[89,9] ReyColina · fase Playing ronda 2 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=632117307 ping=30 | COLINA fase Playing cuenta 0,0 t 9,7 títeres con datos 3/3
+[91,9] ReyColina · fase Playing ronda 2 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=632117307 ping=27 | COLINA fase Playing cuenta 0,0 t 11,7 títeres con datos 3/3
+[93,9] ReyColina · fase Playing ronda 2 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=632117307 ping=41 | COLINA fase Playing cuenta 0,0 t 13,8 títeres con datos 3/3
+[95,9] ReyColina · fase Playing ronda 2 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=632117307 ping=24 | COLINA fase Playing cuenta 0,0 t 15,7 títeres con datos 3/3
+[97,9] ReyColina · fase Playing ronda 2 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=632117307 ping=29 | COLINA fase Playing cuenta 0,0 t 17,8 títeres con datos 3/3
+[99,9] ReyColina · fase Results ronda 2 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=632117307 ping=106 | COLINA fase Playing cuenta 0,0 t 19,8 títeres con datos 3/3
+[102,0] ReyColina · fase Results ronda 2 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=632117307 ping=46 | COLINA fase Playing cuenta 0,0 t 21,8 títeres con datos 3/3
+[104,0] ReyColina · fase Results ronda 2 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=632117307 ping=27 | COLINA fase Playing cuenta 0,0 t 23,8 títeres con datos 3/3
+[106,0] ReyColina · fase Results ronda 2 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=632117307 ping=25 | COLINA fase Playing cuenta 0,0 t 25,9 títeres con datos 3/3
+[108,0] ReyColina · fase Results ronda 2 miembros 4 (humanos 2) yo=1 sentado=True red=True semilla=632117307 ping=36 | COLINA fase Playing cuenta 0,0 t 27,9 títeres con datos 3/3

@@ -218,7 +218,7 @@ public sealed class PirateFighter : MonoBehaviour
         lifting = false;
         grabHeld = leftReach = rightReach = false;
         if (Time.time < botThink) return;
-        botThink = Time.time + Random.Range(0.2f, 0.4f);
+        botThink = Time.time + Random.Range(0.2f, 0.4f) * MultiverseSettings.BotDelay;
         PirateFighter target = director.NearestLivingFighter(transform.position, this);
         if (target == null) { move = Vector3.zero; return; }
         Vector3 delta = Vector3.ProjectOnPlane(target.transform.position - transform.position, Vector3.up);

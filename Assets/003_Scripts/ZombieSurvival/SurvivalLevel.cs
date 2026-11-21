@@ -136,33 +136,71 @@ public sealed class SurvivalLevel : MonoBehaviour
     }
 
     // Four themed corners, each with a guarded cache (some waves hide the part there) and supply crates.
+    // 2026-11-17: every sector is a real place built from the toy-style landmarks (Tools/Blender/zonas.py):
+    // a petrol station with canopy, pumps, shop and price pylon; a junkyard with a crane and crushed-car stacks;
+    // a warehouse with racks and a forklift; a fire station with its tower and fire engine.
     void Sectors()
     {
         void P(string key, Vector3 c, float x, float z, float yaw, float h, bool solid = true) => SurvivalKit.Model(key, root, c + new Vector3(x, 0, z), yaw, h, solid);
-        void Sign(string text, Vector3 c, Color col)
-        {
-            EscapeKit.Text(root, text, c + new Vector3(0, 4.2f, -7.5f), new Vector3(0, 0, 0), .07f, col);
-            EscapeKit.PointLight(root, c + Vector3.up * 6, col, 22, 2.2f);
-        }
+        GameObject L(string key, float x, float z, float yaw, bool shell = false) => SurvivalLandmark.Place(key, root, new Vector3(x, 0, z), yaw, shell);
+        void Pad(string name, float x, float z, float sx, float sz, Color col, float y = .015f) => EscapeKit.Block(root, name, new Vector3(x, y, z), new Vector3(sx, .02f, sz), EscapeKit.Paint(col, .05f), .01f, false);
+        void Lamp(Vector3 at, Color col, float range, float intensity) => EscapeKit.PointLight(root, at, col, range, intensity);
         float o = 28f;
-        // NE · junkyard: wrecked cars and tyres
-        Vector3 ne = new Vector3(o, 0, o); Sign("EL DESGUACE", ne, new Color(1, .7f, .35f));
-        P("Vehicle_Sports", ne, -6, 4, 120, 1.35f); P("Vehicle_Pickup", ne, 5, 6, 200, 1.7f); P("Vehicle_Sports_Armored", ne, 6.5f, -4, 30, 1.4f);
-        P("Vehicle_Truck", ne, -7, -6, 80, 2.7f); P("Vehicle_Pickup_Armored", ne, 0, 9, 95, 1.8f);
-        P("Wheels_Stack", ne, -3, 8, 0, 1); P("Wheels_Stack", ne, 9, 1, 0, 1); P("Wheel", ne, 3, -7, 70, .6f, false); P("Blood_1", ne, 2, 3, 0, .05f, false);
-        // NW · warehouse: container corridors and pallets
-        Vector3 nw = new Vector3(-o, 0, o); Sign("EL ALMACÉN", nw, new Color(.5f, .8f, 1));
-        P("Container_Red", nw, -6, 5, 0, 2.6f); P("Container_Green", nw, 6, 5, 0, 2.6f); P("Container_Red", nw, -7, -5, 90, 2.6f); P("Container_Green", nw, 8, -6, 90, 2.6f);
-        P("Pallet", nw, -2, 8, 10, .22f, false); P("Pallet_Broken", nw, 3, -8, -20, .22f, false); P("Chest_Special", nw, -9, 0, 90, .9f); P("CinderBlock", nw, 4, 9, 30, .3f, false);
-        // SE · petrol station: barrels and a tanker
-        Vector3 se = new Vector3(o, 0, -o); Sign("LA GASOLINERA", se, new Color(1, .45f, .35f));
-        P("Vehicle_Truck_Armored", se, -6, 5, -30, 2.8f); P("Pipes", se, 7, 6, 0, .8f); P("PlasticBarrier", se, -3, -8, 90, 1);
-        for (int i = 0; i < 7; i++) P("Barrel", se, 6 + (i % 3) * 1.1f, -5 - (i / 3) * 1.1f, i * 40, 1.05f);
-        P("TrafficLight_1", se, -9, -3, 90, 4.5f);
-        // SW · fire station yard
-        Vector3 sw = new Vector3(-o, 0, -o); Sign("PARQUE DE BOMBEROS", sw, new Color(.6f, 1, .5f));
-        P("Vehicle_Pickup", sw, -6, -5, 45, 1.7f); P("FireHydrant", sw, 4, 6, 0, .8f); P("Couch", sw, 7, -3, 120, .9f);
-        P("TrashBag_1", sw, -8, 6, 0, .7f); P("TrashBag_2", sw, -7, 7, 60, .7f); P("TrafficCone_1", sw, 2, -8, 0, .7f); P("TrafficCone_2", sw, 3, -7.4f, 30, .7f); P("StreetLights", sw, 9, 8, 225, 5.5f);
+        Vector3 ne = new Vector3(o, 0, o), nw = new Vector3(-o, 0, o), se = new Vector3(o, 0, -o), sw = new Vector3(-o, 0, -o);
+        Material paintW = EscapeKit.Paint(new Color(.95f, .95f, .9f)), paintY = EscapeKit.Paint(new Color(1f, .8f, .2f));
+
+        // SE · LA GASOLINERA: canopy over the cache, two pump islands, shop, price pylon, tanker.
+        Pad("Gasolinera · losa", 29.5f, -29.5f, 21f, 21f, new Color(.62f, .62f, .6f));
+        for (int i = 0; i < 6; i++) EscapeKit.Block(root, "Plaza de aparcamiento", new Vector3(21f, .03f, -21.5f - i * 2.6f), new Vector3(3.2f, .02f, .12f), paintW, .005f, false);
+        EscapeKit.Block(root, "Línea de parada", new Vector3(28f, .03f, -21.2f), new Vector3(12f, .02f, .25f), paintY, .005f, false);
+        L("Gasolinera_Surtidores", 28f, -28f, 0f);
+        var roof = L("Gasolinera_Techo", 28f, -28f, 0f, true); if (roof != null) roof.AddComponent<SurvivalRoofFade>().Setup(director, new Vector2(7.2f, 5.2f));
+        L("Gasolinera_Tienda", 30f, -36.6f, 0f, true);
+        L("Gasolinera_Totem", 37.6f, -20.5f, -70f);
+        L("Gasolinera_Cisterna", 38.1f, -28.6f, 0f);
+        L("Gasolinera_Aire", 20.4f, -30f, 90f);
+        L("Gasolinera_Aceite", 23.6f, -35.8f, 15f);
+        for (int i = 0; i < 4; i++) P("Barrel", se, -6.5f + (i % 2) * 1.05f, -10.3f + (i / 2) * 1.05f, i * 40, 1.05f);
+        Lamp(se + new Vector3(0, 4f, 0), new Color(1f, .97f, .9f), 16, 3.2f);
+        Lamp(new Vector3(30f, 3f, -32.5f), new Color(1f, .8f, .5f), 9, 2f);
+        Lamp(new Vector3(37f, 6.5f, -19f), new Color(1f, .4f, .3f), 8, 2f);
+
+        // NE · EL DESGUACE: dirt yard, crane holding a car over the cache, crushed-car stacks, office with its sign.
+        Pad("Desguace · tierra", 29.5f, 29.5f, 21f, 21f, new Color(.42f, .33f, .24f));
+        for (int i = 0; i < 7; i++) Pad("Charco de aceite", 22f + (i * 37 % 15), 22f + (i * 53 % 16), 1.6f + (i % 3) * .6f, 1.2f + (i % 2) * .7f, new Color(.18f, .16f, .15f), .022f);
+        L("Desguace_Grua", 36.4f, 36.4f, 225f);
+        L("Desguace_Pila", 37.7f, 22f, 0f); L("Desguace_Pila", 37.7f, 26.9f, 180f); L("Desguace_Pila", 30f, 37.9f, 90f);
+        L("Desguace_Caseta", 22.2f, 37.9f, 180f, true);
+        L("Desguace_Valla", 19.2f, 31f, 90f); L("Desguace_Valla", 31f, 19.2f, 0f);
+        L("Desguace_Neumaticos", 22.5f, 33.2f, 0f);
+        P("Wheel", ne, 3, -7, 70, .6f, false); P("Blood_1", ne, 2, 3, 0, .05f, false);
+        Lamp(new Vector3(31f, 6f, 31f), new Color(1f, .7f, .35f), 16, 2.6f);
+        Lamp(new Vector3(22f, 4.5f, 35f), new Color(1f, .6f, .3f), 8, 2f);
+
+        // NW · EL ALMACÉN: loading yard with hazard lines, warehouse, racks, forklift, pallets, containers.
+        Pad("Almacén · patio", -29.5f, 29.5f, 21f, 21f, new Color(.4f, .42f, .45f));
+        for (int i = 0; i < 9; i++) EscapeKit.Block(root, "Franja de carga", new Vector3(-37f + i * 1.25f, .03f, 30.8f), new Vector3(.5f, .02f, 1.6f), paintY, .005f, false, new Vector3(0, 35, 0));
+        L("Almacen_Nave", -33f, 36.1f, 180f, true);
+        L("Almacen_Estanteria", -39.2f, 24.5f, 90f); L("Almacen_Estanteria", -39.2f, 17.5f, 90f);
+        L("Almacen_Carretilla", -23.5f, 31f, 200f);
+        L("Almacen_Cajas", -25.5f, 38.8f, 0f); L("Almacen_Cajas", -23.8f, 38.8f, 10f); L("Almacen_Cajas", -31.5f, 23f, -8f);
+        P("Container_Red", nw, 6.5f, -4f, 90, 2.6f); P("Container_Green", nw, -6f, -8.5f, 0, 2.6f);
+        P("Pallet", nw, 2, 6.5f, 10, .22f, false); P("Pallet_Broken", nw, 3, -8, -20, .22f, false);
+        Lamp(new Vector3(-30f, 5f, 30f), new Color(.6f, .82f, 1f), 16, 2.6f);
+        Lamp(new Vector3(-34.5f, 4.5f, 30.5f), new Color(1f, .9f, .6f), 8, 2.2f);
+
+        // SW · PARQUE DE BOMBEROS: red apron, station with two garage doors, hose tower, fire engine.
+        Pad("Bomberos · patio", -29.5f, -29.5f, 21f, 21f, new Color(.55f, .55f, .53f));
+        Pad("Bomberos · rampa roja", -31f, -27.8f, 12f, 8.4f, new Color(.62f, .18f, .16f), .02f);
+        for (int i = 0; i < 2; i++) EscapeKit.Block(root, "Prohibido aparcar", new Vector3(-34f + i * 6f, .03f, -27.8f), new Vector3(.25f, .02f, 8f), paintW, .005f, false);
+        L("Bomberos_Cuartel", -31f, -36.1f, 0f, true);
+        L("Bomberos_Torre", -38.9f, -37.2f, 0f, true);
+        L("Bomberos_Camion", -34f, -25.6f, 0f);
+        L("Bomberos_Carrete", -23.6f, -33.9f, 0f); L("Bomberos_Carrete", -22.2f, -33.9f, 0f);
+        P("FireHydrant", sw, 6, 6, 0, .8f); P("TrafficCone_1", sw, 2, -1.5f, 0, .7f); P("TrafficCone_2", sw, 3, -.6f, 30, .7f); P("TrafficCone_1", sw, 4, .4f, 0, .7f);
+        P("StreetLights", sw, 9, 8, 225, 5.5f);
+        Lamp(new Vector3(-31f, 5f, -30f), new Color(1f, .55f, .45f), 15, 2.6f);
+        Lamp(new Vector3(-31f, 4.2f, -30.8f), new Color(1f, .9f, .7f), 9, 2f);
         string[] names = { "EL DESGUACE", "EL ALMACÉN", "LA GASOLINERA", "PARQUE DE BOMBEROS" };
         Vector3[] centers = { ne, nw, se, sw };
         for (int i = 0; i < 4; i++)

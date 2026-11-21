@@ -40,7 +40,7 @@ public sealed class CrazyKartHUD : MonoBehaviour
         font=Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
         var canvas=new GameObject("HUD Carreras",typeof(Canvas),typeof(UnityEngine.UI.CanvasScaler),typeof(UnityEngine.UI.GraphicRaycaster));
         canvas.transform.SetParent(transform,false);canvas.GetComponent<Canvas>().renderMode=RenderMode.ScreenSpaceOverlay;
-        var scaler=canvas.GetComponent<UnityEngine.UI.CanvasScaler>();scaler.uiScaleMode=UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;scaler.referenceResolution=new Vector2(1280,720);scaler.matchWidthOrHeight=.5f;
+        var scaler=canvas.GetComponent<UnityEngine.UI.CanvasScaler>();scaler.uiScaleMode=UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;scaler.referenceResolution=new Vector2(1280,720);scaler.matchWidthOrHeight=.5f; scaler.screenMatchMode = UnityEngine.UI.CanvasScaler.ScreenMatchMode.Expand;
         if(FindAnyObjectByType<EventSystem>()==null)new GameObject("EventSystem",typeof(EventSystem),typeof(InputSystemUIInputModule));
         var top=Rect("Panel carrera",canvas.transform,new Vector2(0,1),new Vector2(185,-88),new Vector2(340,150));Panel(top,new Color(.09f,.04f,.2f,.92f));
         status=Label("Posicion y vueltas",top,new Vector2(.5f,.5f),Vector2.zero,new Vector2(325,140),22);

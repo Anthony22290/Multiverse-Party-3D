@@ -1,30 +1,21 @@
 Equipo: 4 jugadores
 PASS Oleada 1: 28 s de juego · camioneta 1/10 · bajas 7
-PASS Oleada 2: 37 s de juego · camioneta 2/10 · bajas 25
-PASS Oleada 3: 39 s de juego · camioneta 3/10 · bajas 35
-PASS Oleada 4: 42 s de juego · camioneta 4/10 · bajas 52
-PASS Oleada 5: 40 s de juego · camioneta 5/10 · bajas 78
-PASS Oleada 6: 36 s de juego · camioneta 6/10 · bajas 92
-PASS Oleada 7: 47 s de juego · camioneta 7/10 · bajas 123
-FAIL Partida: estado Lost, oleada 8/10, camioneta 7/10, 333 s de juego, 117 s reales
-INFO Jefes vistos: Gordo, Brazos
-INFO máx. zombis a la vez 20 · bajas 132 · caídas del equipo 6
-INFO caída: 310s oleada 8: Coral derribado por Blob · zombis cerca 5
-INFO caída: 316s oleada 8: Tú derribado por Fantasma · zombis cerca 3
-INFO caída: 321s oleada 8: Menta derribado por Lanzabombas · zombis cerca 4
-INFO caída: 324s oleada 8: Coral derribado por Lanzabombas · zombis cerca 2
-INFO caída: 328s oleada 8: Tú derribado por Lanzabombas · zombis cerca 6
-INFO caída: 329s oleada 8: Rayo derribado por Lanzabombas · zombis cerca 2
-INFO caída: 333s oleada 8: Coral derribado por Lanzabombas · zombis cerca 5
-INFO Tú: 37 zombis, 2 piezas, 1 reanimaciones, 2 caídas
-INFO Coral: 37 zombis, 2 piezas, 1 reanimaciones, 3 caídas
-INFO Menta: 20 zombis, 1 piezas, 0 reanimaciones, 1 caídas
-INFO Rayo: 38 zombis, 2 piezas, 1 reanimaciones, 1 caídas
-INFO Al fallar: zombis vivos 12, pieza suelta no, portador Zombi brillante @(17, 0, 0)
-INFO   Lanzabombas @(6.2, 0.0, 8.0)
-INFO   Lanzabombas @(25.3, 0.0, 0.0)
-INFO   Zombi brillante @(16.7, 0.0, 0.1)
-INFO   Gordito @(16.6, 0.0, -1.3)
-INFO   Lanzabombas @(2.7, 0.0, 3.2)
-INFO   Blob @(4.9, 0.0, 1.3)
+PASS Oleada 2: 30 s de juego · camioneta 2/10 · bajas 20
+PASS Oleada 3: 37 s de juego · camioneta 3/10 · bajas 30
+PASS Oleada 4: 44 s de juego · camioneta 4/10 · bajas 51
+PASS Oleada 5: 37 s de juego · camioneta 5/10 · bajas 75
+PASS Oleada 6: 48 s de juego · camioneta 6/10 · bajas 88
+PASS Oleada 7: 44 s de juego · camioneta 7/10 · bajas 109
+PASS Oleada 8: 50 s de juego · camioneta 8/10 · bajas 142
+PASS Oleada 9: 46 s de juego · camioneta 9/10 · bajas 165
+PASS Oleada 10: 54 s de juego · camioneta 10/10
+PASS Partida: estado Won, oleada 10/10, camioneta 10/10, 425 s de juego, 108 s reales
+PASS Jefes vistos: Gordo, Brazos, Costillas, Rey
+INFO máx. zombis a la vez 21 · bajas 194 · caídas del equipo 2
+INFO caída: 255s oleada 7: Menta derribado por Lanzabombas · zombis cerca 4
+INFO caída: 263s oleada 7: Coral derribado por Lanzabombas · zombis cerca 1
+INFO Tú: 57 zombis, 1 piezas, 0 reanimaciones, 0 caídas
+INFO Coral: 51 zombis, 2 piezas, 1 reanimaciones, 1 caídas
+INFO Menta: 60 zombis, 6 piezas, 0 reanimaciones, 1 caídas
+INFO Rayo: 26 zombis, 1 piezas, 1 reanimaciones, 0 caídas
 PASS Resultados mostrados

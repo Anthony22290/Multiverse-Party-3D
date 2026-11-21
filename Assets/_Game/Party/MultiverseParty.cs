@@ -28,6 +28,13 @@ public sealed class PartyMember
     // Plaza actions: a sequence number changes every time the action happens.
     public int EmoteId, EmoteSeq, ChatId, ChatSeq, PushSeq;
     public Vector3 PushDir;
+    /// <summary>Round trip to the host in ms (0 = this member is the host, -1 = bot or not measured yet).</summary>
+    public int Ping = -1;
+    // 2026-11-21 · reconnection (host only, not replicated): who played this slot before a bot took it, and who is
+    // waiting to get it back when the current minigame ends.
+    [NonSerialized] public string Id = "", LeftId = "", LeftName = "", PendingName = "", PendingId = "";
+    [NonSerialized] public int LeftCharacter, LeftColor, PendingCharacter, PendingColor;
+    [NonSerialized] public PlayerRef Reserved = PlayerRef.None;
     [NonSerialized] public float BotVoteAt;
     public int TotalWins => Wins.Sum();
     public void ResetStats() { Wins = new int[PartyGames.Count]; Pushes = Pushed = Emotes = VoteHits = Chats = 0; }
@@ -52,7 +59,15 @@ public sealed class PartyRoster
 public sealed class MultiverseParty : MonoBehaviour
 {
     public static MultiverseParty Instance { get; private set; }
-    public const int WinScore = 5, MinSize = 4, MaxSize = 6;
+    public const int DefaultWinScore = 5, MinGoal = 1, MaxGoal = 15, MaxPlaylist = 20, MinSize = 4, MaxSize = 6;
+    /// <summary>Points needed to be champion in the current match (chosen in the main menu; 5 by default).</summary>
+    public static int WinScore => Instance != null ? Instance.Goal : ChosenGoal;
+
+    // 2026-11-18 · main menu "SELECCIONAR MAPAS": the host may fix which minigames are played and in what order
+    // (no voting; the list loops if nobody has won yet) and how many points win. Empty list = normal voting.
+    public static readonly List<int> ChosenPlaylist = new List<int>();
+    public static int ChosenGoal = DefaultWinScore;
+    public static bool CustomChoice => ChosenPlaylist.Count > 0 || ChosenGoal != DefaultWinScore;
     public const string HubScene = "MundoDeInicio", MenuScene = "MenuPrincipal";
     public const float VoteSeconds = 22f, FirstVoteSeconds = 30f, RevealSeconds = 4f, ResultSeconds = 9f, ReportTimeout = 45f;
     public const string NameKey = "Multiverse_Nombre";
@@ -96,12 +111,26 @@ public sealed class MultiverseParty : MonoBehaviour
         return value.Length == 0 ? "Jugador" : value;
     }
 
+    /// <summary>Identifies this copy of the game while it runs: lets the host give you back your seat if you reconnect.</summary>
+    public static readonly string SessionId = Guid.NewGuid().ToString("N").Substring(0, 16);
+    /// <summary>Code of the last online room (pre-filled in the menu to get back in after a disconnection).</summary>
+    public static string LastRoom { get => PlayerPrefs.GetString("Multiverse_UltimaSala", ""); set { PlayerPrefs.SetString("Multiverse_UltimaSala", value ?? ""); PlayerPrefs.Save(); } }
+    /// <summary>The connection to the room was lost: the menu offers to go back in.</summary>
+    public static string RejoinCode = "";
+    /// <summary>New rooms appear in the "SALAS ABIERTAS" list (otherwise only with the code).</summary>
+    public static bool PublicRooms { get => PlayerPrefs.GetInt("Multiverse_SalaPublica", 1) == 1; set { PlayerPrefs.SetInt("Multiverse_SalaPublica", value ? 1 : 0); PlayerPrefs.Save(); } }
+    public const string RoomHostKey = "h", RoomStateKey = "e", RoomSizeKey = "t";
+
     // ---------------- State (authority writes, everyone reads) ----------------
     public bool Online { get; private set; }
     public bool IsHost { get; private set; } = true;
     public bool IsAuthority => !Online || IsHost;
     public string RoomCode { get; private set; } = "";
     public int TargetSize = MinSize;
+    public int Goal = DefaultWinScore;
+    public readonly List<int> Playlist = new List<int>();
+    public int PlayIndex;   // next position in Playlist (host)
+    public bool UsesPlaylist => Playlist.Count > 0;
     public readonly List<PartyMember> Members = new List<PartyMember>();
     public PartyPhase Phase = PartyPhase.Voting;
     public readonly int[] Choices = { -1, -1, -1 };
@@ -115,6 +144,8 @@ public sealed class MultiverseParty : MonoBehaviour
     /// <summary>Random seed of the current round: every peer builds the same minigame layout from it.</summary>
     public int Seed;
     public int LocalIndex { get; private set; }
+    /// <summary>False while an online client is connected but still waiting for its seat (it reconnected mid-minigame).</summary>
+    public bool Seated { get; private set; } = true;
     public PartyMember Local => LocalIndex >= 0 && LocalIndex < Members.Count ? Members[LocalIndex] : null;
     public NetworkRunner Runner { get; private set; }
     public MultiversePartyNet Net { get; private set; }
@@ -146,6 +177,8 @@ public sealed class MultiverseParty : MonoBehaviour
         var go = new GameObject("Multiverse Party");
         DontDestroyOnLoad(go);
         Instance = go.AddComponent<MultiverseParty>();
+        Instance.Goal = Mathf.Clamp(ChosenGoal, MinGoal, MaxGoal);
+        Instance.Playlist.AddRange(ChosenPlaylist.Where(g => g >= 0 && g < PartyGames.Count).Take(MaxPlaylist));
         Instance.gameObject.AddComponent<MultiversePartyOverlay>();
         return Instance;
     }
@@ -192,6 +225,7 @@ public sealed class MultiverseParty : MonoBehaviour
 
         var p = Create();
         p.Online = true; p.IsHost = host; p.RoomCode = code; p.TargetSize = Mathf.Clamp(size, MinSize, MaxSize);
+        p.Seated = host; RejoinCode = "";
         p.Phase = PartyPhase.Lobby;
         var runnerGo = new GameObject("Party Runner");
         DontDestroyOnLoad(runnerGo);
@@ -205,12 +239,12 @@ public sealed class MultiverseParty : MonoBehaviour
         runner.AddCallbacks(callbacks);
         try
         {
-            var settings = Fusion.Photon.Realtime.PhotonAppSettings.Global.AppSettings.GetCopy();
-            settings.FixedRegion = "sa"; settings.AppVersion = "multiverse-party-1";
+            var settings = OnlineSettings();
             var result = await runner.StartGame(new StartGameArgs
             {
                 GameMode = host ? GameMode.Host : GameMode.Client, SessionName = code, PlayerCount = MaxSize,
-                IsVisible = false, IsOpen = true, EnableClientSessionCreation = false, CustomPhotonAppSettings = settings
+                IsVisible = host && PublicRooms, IsOpen = true, EnableClientSessionCreation = false, CustomPhotonAppSettings = settings,
+                SessionProperties = host ? new Dictionary<string, SessionProperty> { { RoomHostKey, SavedName }, { RoomStateKey, 0 }, { RoomSizeKey, p.TargetSize } } : null
             });
             if (!result.Ok)
             {
@@ -220,13 +254,14 @@ public sealed class MultiverseParty : MonoBehaviour
             }
             if (host)
             {
-                p.Members.Add(new PartyMember { Name = SavedName, Bot = false, Owner = runner.LocalPlayer, Character = SavedCharacter, ColorIndex = SavedColor });
+                p.Members.Add(new PartyMember { Name = SavedName, Bot = false, Owner = runner.LocalPlayer, Character = SavedCharacter, ColorIndex = SavedColor, Id = SessionId });
                 p.LocalIndex = 0;
                 var prefab = Resources.Load<NetworkObject>("MultiversePartyNet");
                 if (prefab == null) throw new InvalidOperationException("Falta el prefab MultiversePartyNet (menú Multiverse/Preparar Partida en línea).");
                 runner.Spawn(prefab);
             }
             LastStatus = host ? "Sala " + code + " creada." : "Conectado a la sala " + code + ".";
+            LastRoom = code;
             SceneManager.LoadScene(HubScene);
             return true;
         }
@@ -237,6 +272,14 @@ public sealed class MultiverseParty : MonoBehaviour
             p.leaving = true; await p.ShutdownRunner(); if (p != null) Destroy(p.gameObject);
             return false;
         }
+    }
+
+    /// <summary>Photon settings shared by the rooms and the room list (same region and version, or they don't see each other).</summary>
+    public static Fusion.Photon.Realtime.FusionAppSettings OnlineSettings()
+    {
+        var settings = Fusion.Photon.Realtime.PhotonAppSettings.Global.AppSettings.GetCopy();
+        settings.FixedRegion = "sa"; settings.AppVersion = "multiverse-party-1";
+        return settings;
     }
 
     async Task ShutdownRunner()
@@ -261,19 +304,25 @@ public sealed class MultiverseParty : MonoBehaviour
     {
         if (leaving) return;
         Runner = null;
-        LeaveToMenu(IsHost ? "La sala se cerró (" + reason + ")." : "Se perdió la conexión con el anfitrión (" + reason + ").");
+        if (!IsHost) RejoinCode = RoomCode;
+        LeaveToMenu(IsHost ? "La sala se cerró (" + reason + ")."
+                           : "Se perdió la conexión con la sala " + RoomCode + ". Pulsa UNIRSE para volver: recuperas tu sitio y tus puntos.");
     }
 
     void OnPlayerLeft(PlayerRef player)
     {
         if (!IsHost) return;
         foreach (var m in Members)
+        {
+            if (m.Reserved == player) { m.Reserved = PlayerRef.None; m.PendingId = ""; }
             if (!m.Bot && m.Owner == player)
             {
                 string old = m.Name;
-                m.Bot = true; m.Owner = PlayerRef.None; m.Name = FreeBotName();
-                Toast(old + " salió · lo sustituye " + m.Name);
+                m.LeftId = m.Id; m.LeftName = old; m.LeftCharacter = m.Character; m.LeftColor = m.ColorIndex;
+                m.Bot = true; m.Owner = PlayerRef.None; m.Id = ""; m.Name = FreeBotName();
+                Toast(Phase == PartyPhase.Lobby ? old + " salió" : old + " salió · lo sustituye " + m.Name + " hasta que vuelva");
             }
+        }
         if (Phase == PartyPhase.Lobby) Members.RemoveAll(m => m.Bot);
         Changed?.Invoke();
     }
@@ -287,26 +336,72 @@ public sealed class MultiverseParty : MonoBehaviour
     {
         Net = net;
         if (Runner != null) Runner.MakeDontDestroyOnLoad(net.gameObject);
-        if (!IsHost) net.RPC_Join(SavedName, (sbyte)SavedCharacter, (sbyte)SavedColor);
+        if (!IsHost) net.RPC_Join(SavedName, (sbyte)SavedCharacter, (sbyte)SavedColor, SessionId);
     }
 
-    public void HostJoin(PlayerRef player, string name, int character, int color)
+    public void HostJoin(PlayerRef player, string name, int character, int color, string id = "")
     {
         if (!IsHost) return;
-        name = Clean(name);
-        if (Members.Any(m => !m.Bot && m.Owner == player)) return;
-        if (Members.Any(m => m.Name == name)) name = name.Length > 12 ? name.Substring(0, 12) + "2" : name + " 2";
-        var slot = Members.FirstOrDefault(m => m.Bot);
-        if (slot != null) { slot.Bot = false; slot.Owner = player; slot.Name = name; slot.Vote = -1; }
-        else if (Members.Count < MaxSize) { slot = new PartyMember { Name = name, Bot = false, Owner = player, Pose = SpawnPoint(Members.Count) }; Members.Add(slot); }
-        if (slot != null)
+        name = Clean(name); id = id ?? "";
+        if (Members.Any(m => (!m.Bot && m.Owner == player) || m.Reserved == player)) return;
+
+        // 2026-11-21 · the same copy of the game is back while its old connection has not timed out yet: drop the old one.
+        var ghost = id.Length > 0 ? Members.FirstOrDefault(m => !m.Bot && m.Id == id && m.Owner != player && m.Owner != Runner.LocalPlayer) : null;
+        if (ghost != null)
         {
-            slot.Character = Mathf.Clamp(character, 0, PartyGames.Characters.Length - 1);
-            slot.ColorIndex = Mathf.Clamp(color, 0, Colors.Length - 1);
-            ResolveColors(slot);
+            var old = ghost.Owner;
+            OnPlayerLeft(old);
+            try { if (Runner != null && Runner.IsRunning) Runner.Disconnect(old); } catch (Exception e) { Debug.LogWarning("MultiverseParty: " + e.Message); }
         }
-        Toast(name + " se unió a la sala");
+
+        // Your own seat first (same game copy, then same name), otherwise any seat a bot is keeping.
+        bool Free(PartyMember m) => m.Bot && m.Reserved == PlayerRef.None;
+        var slot = (id.Length > 0 ? Members.FirstOrDefault(m => Free(m) && m.LeftId == id) : null)
+                ?? Members.FirstOrDefault(m => Free(m) && m.LeftName.Length > 0 && string.Equals(m.LeftName, name, StringComparison.OrdinalIgnoreCase))
+                ?? Members.FirstOrDefault(m => Free(m) && m.LeftName.Length == 0)
+                ?? Members.FirstOrDefault(Free);
+        bool back = slot != null && ((id.Length > 0 && slot.LeftId == id) || string.Equals(slot.LeftName, name, StringComparison.OrdinalIgnoreCase));
+        if (slot == null && Phase == PartyPhase.Lobby && Members.Count < TargetSize)
+        { slot = new PartyMember { Bot = true, Pose = SpawnPoint(Members.Count) }; Members.Add(slot); }
+        if (slot == null)
+        {   // The match has exactly the chosen number of players (4, 5 or 6): nobody extra gets in.
+            Toast(name + " no pudo entrar: la sala está llena (" + TargetSize + " jugadores)");
+            try { if (Runner != null && Runner.IsRunning) Runner.Disconnect(player); } catch (Exception e) { Debug.LogWarning("MultiverseParty: " + e.Message); }
+            return;
+        }
+        if (Members.Any(m => m != slot && !m.Bot && m.Name == name)) name = name.Length > 12 ? name.Substring(0, 12) + "2" : name + " 2";
+        slot.PendingName = name; slot.PendingId = id;
+        slot.PendingCharacter = Mathf.Clamp(character, 0, PartyGames.Characters.Length - 1);
+        slot.PendingColor = Mathf.Clamp(color, 0, Colors.Length - 1);
+        slot.Reserved = player;
+        if (Phase == PartyPhase.Playing)
+        {   // A minigame is running: changing a bot into a person now would break it. The seat waits for its end.
+            Toast(name + (back ? " volvió" : " entró") + " · jugará al acabar este minijuego");
+            return;
+        }
+        Seat(slot, back);
+    }
+
+    /// <summary>Host: gives a reserved seat to its player.</summary>
+    void Seat(PartyMember slot, bool back)
+    {
+        var player = slot.Reserved; slot.Reserved = PlayerRef.None;
+        if (player == PlayerRef.None || Runner == null || !Runner.ActivePlayers.Contains(player)) { slot.PendingId = ""; return; }
+        slot.Bot = false; slot.Owner = player; slot.Name = slot.PendingName; slot.Id = slot.PendingId; slot.Vote = -1;
+        slot.Character = slot.PendingCharacter; slot.ColorIndex = slot.PendingColor;
+        if (back) { slot.LeftId = ""; slot.LeftName = ""; }
+        ResolveColors(slot);
+        Toast(slot.Name + (back ? " volvió a la partida" : " se unió a la sala"));
         Changed?.Invoke();
+    }
+
+    /// <summary>Host, every tick: seats the players who were waiting for the minigame to end.</summary>
+    void SeatReserved()
+    {
+        if (!IsHost || Phase == PartyPhase.Playing) return;
+        foreach (var m in Members)
+            if (m.Reserved != PlayerRef.None)
+                Seat(m, (m.PendingId.Length > 0 && m.LeftId == m.PendingId) || string.Equals(m.LeftName, m.PendingName, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>Two players can't share a colour: the newcomer keeps it if the other one is a bot, otherwise picks the first free one.</summary>
@@ -328,7 +423,7 @@ public sealed class MultiverseParty : MonoBehaviour
         int size = Mathf.Clamp(net.Size, 0, MaxSize);
         while (Members.Count < size) Members.Add(new PartyMember());
         while (Members.Count > size) Members.RemoveAt(Members.Count - 1);
-        LocalIndex = 0;
+        LocalIndex = 0; bool seated = false;
         for (int i = 0; i < size; i++)
         {
             var m = Members[i];
@@ -337,8 +432,8 @@ public sealed class MultiverseParty : MonoBehaviour
             for (int g = 0; g < PartyGames.Count; g++) m.Wins[g] = net.Wins[i * PartyGames.Count + g];
             m.Pushes = net.Pushes[i]; m.Pushed = net.Pusheds[i]; m.Emotes = net.EmoteCounts[i]; m.VoteHits = net.VoteHits[i]; m.Chats = net.ChatCounts[i];
             m.EmoteId = net.EmoteIds[i]; m.EmoteSeq = net.EmoteSeqs[i]; m.ChatId = net.ChatIds[i]; m.ChatSeq = net.ChatSeqs[i];
-            m.PushSeq = net.PushSeqs[i]; m.PushDir = net.PushDirs[i];
-            if (Runner != null && m.Owner == Runner.LocalPlayer) LocalIndex = i;
+            m.PushSeq = net.PushSeqs[i]; m.PushDir = net.PushDirs[i]; m.Ping = net.Pings[i];
+            if (Runner != null && m.Owner == Runner.LocalPlayer) { LocalIndex = i; seated = true; }
         }
         for (int i = 0; i < size; i++)
             if (i != LocalIndex) { Members[i].Pose = net.Poses[i]; Members[i].Yaw = net.Yaws[i]; Members[i].Moving = net.Moving[i]; }
@@ -346,11 +441,14 @@ public sealed class MultiverseParty : MonoBehaviour
         Phase = (PartyPhase)net.Phase; Selected = net.Selected; Round = net.Round; Countdown = net.Countdown;
         LastWinner = net.LastWinner; LastGame = net.LastGame; ResultText = net.ResultText.ToString(); TargetSize = net.TargetSize;
         ReportsIn = net.ReportsIn; ReportsNeeded = net.ReportsNeeded; Seed = net.Seed;
+        Goal = net.Goal > 0 ? net.Goal : DefaultWinScore;
+        Seated = seated;
         if (prevPhase != Phase || prevRound != Round || prevWinner != LastWinner) Changed?.Invoke();
     }
 
     public void WriteTo(MultiversePartyNet net)
     {
+        UpdatePings(); SeatReserved();
         net.Size = Members.Count;
         for (int i = 0; i < MaxSize; i++)
         {
@@ -370,11 +468,41 @@ public sealed class MultiverseParty : MonoBehaviour
             net.Poses.Set(i, has ? m.Pose : Vector3.zero);
             net.Yaws.Set(i, has ? m.Yaw : 0);
             net.Moving.Set(i, has && m.Moving);
+            net.Pings.Set(i, (short)(has ? Mathf.Clamp(m.Ping, -1, 9999) : -1));
         }
         for (int i = 0; i < 3; i++) net.Choices.Set(i, Choices[i]);
         net.Phase = (int)Phase; net.Selected = Selected; net.Round = Round; net.Countdown = Countdown;
         net.LastWinner = LastWinner; net.LastGame = LastGame; net.ResultText = ResultText; net.TargetSize = TargetSize;
-        net.ReportsIn = ReportsIn; net.ReportsNeeded = ReportsNeeded; net.Seed = Seed;
+        net.ReportsIn = ReportsIn; net.ReportsNeeded = ReportsNeeded; net.Seed = Seed; net.Goal = Goal;
+    }
+
+    float nextPing;
+
+    /// <summary>Host: measure the round trip to every player twice a second (smoothed so the number does not flicker).</summary>
+    void UpdatePings()
+    {
+        if (!Online || !IsHost || Runner == null || !Runner.IsRunning || Time.unscaledTime < nextPing) return;
+        nextPing = Time.unscaledTime + .5f;
+        foreach (var m in Members)
+        {
+            if (m.Bot) { m.Ping = -1; continue; }
+            if (m.Owner == Runner.LocalPlayer) { m.Ping = 0; continue; }
+            double rtt = 0;
+            try { rtt = Runner.GetPlayerRtt(m.Owner); } catch (Exception) { }
+            if (rtt <= 0 || double.IsNaN(rtt)) continue;
+            int ms = Mathf.Clamp(Mathf.RoundToInt((float)(rtt * 1000.0)), 1, 9999);
+            m.Ping = m.Ping <= 0 ? ms : Mathf.Max(1, Mathf.RoundToInt(Mathf.Lerp(m.Ping, ms, .35f)));
+        }
+    }
+
+    /// <summary>"45 ms" coloured green / yellow / red, "anfitrión" for the host, "" offline or for bots.</summary>
+    public static string PingTag(PartyMember m)
+    {
+        if (Instance == null || !Instance.Online || m == null || m.Bot) return "";
+        if (m.Ping == 0) return "<color=#9FD8FF>anfitrión</color>";
+        if (m.Ping < 0) return "<color=#AAB4D0>… ms</color>";
+        string col = m.Ping < 80 ? "7CFC7C" : m.Ping < 150 ? "FFD54A" : "FF6B6B";
+        return "<color=#" + col + ">" + m.Ping + " ms</color>";
     }
 
     public int MemberOf(PlayerRef player)
@@ -389,17 +517,31 @@ public sealed class MultiverseParty : MonoBehaviour
     public void HostStartMatch()
     {
         if (!IsAuthority || Phase != PartyPhase.Lobby) return;
-        FillBots();
+        FillBots(); TrimBots();   // exactly the chosen size (4, 5 or 6) for every minigame of the match
         foreach (var m in Members) { m.Score = 0; m.ResetStats(); }
-        Round = 0;
+        Round = 0; PlayIndex = 0;
         BeginVoting();
+        UpdateRoomInfo();
+    }
+
+    /// <summary>Host: what the "SALAS ABIERTAS" list shows about this room (host name, in lobby or playing, size).</summary>
+    public void UpdateRoomInfo()
+    {
+        if (!Online || !IsHost || Runner == null || !Runner.IsRunning || Runner.SessionInfo == null || !Runner.SessionInfo.IsValid) return;
+        try
+        {
+            Runner.SessionInfo.UpdateCustomProperties(new Dictionary<string, SessionProperty>
+                { { RoomHostKey, SavedName }, { RoomStateKey, Phase == PartyPhase.Lobby ? 0 : 1 }, { RoomSizeKey, TargetSize } });
+        }
+        catch (Exception e) { Debug.LogWarning("MultiverseParty: no se pudo actualizar la sala · " + e.Message); }
     }
 
     public void SetTargetSize(int size)
     {
         if (!IsAuthority) return;
-        TargetSize = Mathf.Clamp(size, MinSize, MaxSize);
+        TargetSize = Mathf.Clamp(Mathf.Max(size, Members.Count(m => !m.Bot)), MinSize, MaxSize);   // never below the people already in
         if (Phase != PartyPhase.Lobby) { FillBots(); TrimBots(); }
+        UpdateRoomInfo();
         Changed?.Invoke();
     }
 
@@ -434,7 +576,7 @@ public sealed class MultiverseParty : MonoBehaviour
     {
         if (!IsAuthority || Phase != PartyPhase.Champion) return;
         foreach (var m in Members) { m.Score = 0; m.ResetStats(); }
-        LastWinner = -1; ResultText = ""; LastGame = -1;
+        LastWinner = -1; ResultText = ""; LastGame = -1; PlayIndex = 0;
         BeginVoting();
     }
 
@@ -527,7 +669,7 @@ public sealed class MultiverseParty : MonoBehaviour
                 Countdown = Mathf.Max(0, phaseEnds - now);
                 if (now >= phaseEnds)
                 {
-                    if (Members.Any(m => m.Score >= WinScore)) { Phase = PartyPhase.Champion; Countdown = 0; Changed?.Invoke(); }
+                    if (Members.Any(m => m.Score >= Goal)) { Phase = PartyPhase.Champion; Countdown = 0; Changed?.Invoke(); }
                     else BeginVoting();
                 }
                 break;
@@ -567,9 +709,9 @@ public sealed class MultiverseParty : MonoBehaviour
         string game = Selected >= 0 ? PartyGames.All[Selected].Title : "";
         if (winner >= 0)
         {
-            Members[winner].Score = Mathf.Min(WinScore, Members[winner].Score + 1);
+            Members[winner].Score = Mathf.Min(Goal, Members[winner].Score + 1);
             if (Selected >= 0 && Selected < PartyGames.Count) Members[winner].Wins[Selected]++;
-            ResultText = Members[winner].Score >= WinScore ? "¡" + Members[winner].Name + " llega a " + WinScore + " puntos!" : Members[winner].Name + " gana " + game + " · +1 punto";
+            ResultText = Members[winner].Score >= Goal ? "¡" + Members[winner].Name + " llega a " + Goal + (Goal == 1 ? " punto!" : " puntos!") : Members[winner].Name + " gana " + game + " · +1 punto";
         }
         else ResultText = "Nadie gana " + game + " · sin puntos esta ronda";
         Phase = PartyPhase.Results; phaseEnds = Time.unscaledTime + ResultSeconds;
@@ -579,12 +721,25 @@ public sealed class MultiverseParty : MonoBehaviour
 
     void BeginVoting()
     {
+        if (UsesPlaylist) { BeginPlaylistGame(); return; }
         var pool = Enumerable.Range(0, PartyGames.Count).Where(g => g != LastGame).OrderBy(_ => UnityEngine.Random.value).ToList();
         for (int i = 0; i < 3; i++) Choices[i] = pool[i % pool.Count];
         float duration = Round == 0 ? FirstVoteSeconds : VoteSeconds;
         phaseEnds = Time.unscaledTime + duration;
         foreach (var m in Members) { m.Vote = -1; m.BotVoteAt = Time.unscaledTime + UnityEngine.Random.Range(4f, duration * .7f); }
         Selected = -1; Phase = PartyPhase.Voting; reported = false; devDirect = false;
+        Changed?.Invoke();
+    }
+
+    /// <summary>Chosen order: no vote. The portals show this game and the next two; the chosen one opens after a short reveal.</summary>
+    void BeginPlaylistGame()
+    {
+        int n = Playlist.Count;
+        for (int i = 0; i < 3; i++) Choices[i] = Playlist[(PlayIndex + i) % n];
+        Selected = Playlist[PlayIndex % n]; PlayIndex++;
+        foreach (var m in Members) m.Vote = -1;
+        Phase = PartyPhase.Reveal; phaseEnds = Time.unscaledTime + (Round == 0 ? 8f : 6f);
+        reported = false; devDirect = false;
         Changed?.Invoke();
     }
 
@@ -652,7 +807,7 @@ public sealed class MultiverseParty : MonoBehaviour
                 StartCoroutine(Load(HubScene, -1));
             return;
         }
-        if (Phase == PartyPhase.Playing && loadedRound != Round && Selected >= 0 && !loading)
+        if (Phase == PartyPhase.Playing && loadedRound != Round && Selected >= 0 && !loading && Seated)
         {
             loadedRound = Round; reported = false;
             StartCoroutine(Load(PartyGames.All[Selected].Scene, Selected));
@@ -719,7 +874,7 @@ public sealed class MultiverseParty : MonoBehaviour
     // =====================================================================
     // End-of-match titles
     // =====================================================================
-    static readonly string[] GameTitles = { "Rey de la cubierta", "Cazazombis", "As del volante", "Hacker sigiloso", "Mente maestra" };
+    static readonly string[] GameTitles = { "Rey de la cubierta", "Cazazombis", "As del volante", "Hacker sigiloso", "Mente maestra", "Saltarrodillos", "Topo de oro", "Ingeniero espacial", "As del propulsor", "Rey del green", "Manos de hielo", "Rey del corral", "Repartidor estrella", "Manos rápidas", "Pies ligeros", "Picasso", "Rey de la colina", "Memoria de elefante" };
 
     /// <summary>One fun title per player, from the match statistics.</summary>
     public string[] Titles()
@@ -799,8 +954,10 @@ public sealed class MultiversePartyOverlay : MonoBehaviour
     RawImage loadImage;
     Text loadTitle, loadSub, loadControls, loadTip;
     RectTransform loadFill;
-    Text cardTitle, cardBody, cardFooter, waitingText, toastText;
-    float toastUntil;
+    Text cardTitle, cardBody, cardFooter, waitingText, toastText, pingText;
+    GameObject pingBox, seatPanel;
+    Text seatText;
+    float toastUntil, nextPingText;
     MultiverseParty party;
 
     void Start() => Build();
@@ -814,7 +971,7 @@ public sealed class MultiversePartyOverlay : MonoBehaviour
         root.transform.SetParent(transform, false);
         canvas = root.GetComponent<Canvas>(); canvas.renderMode = RenderMode.ScreenSpaceOverlay; canvas.sortingOrder = 300;
         var scaler = root.GetComponent<CanvasScaler>(); scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1280, 720); scaler.matchWidthOrHeight = .5f;
+        scaler.referenceResolution = new Vector2(1280, 720); scaler.matchWidthOrHeight = .5f; scaler.screenMatchMode = UnityEngine.UI.CanvasScaler.ScreenMatchMode.Expand;
 
         card = Panel(root.transform, "Resultado de la ronda", new Vector2(.5f, .5f), Vector2.zero, new Vector2(620, 430));
         cardTitle = Label(card.transform, 36, new Vector2(0, 165), new Vector2(580, 70));
@@ -829,6 +986,22 @@ public sealed class MultiversePartyOverlay : MonoBehaviour
         toastBox = Panel(root.transform, "Aviso", new Vector2(.5f, 1), new Vector2(0, -122), new Vector2(560, 54));
         toastText = Label(toastBox.transform, 18, Vector2.zero, new Vector2(540, 48));
         toastBox.SetActive(false);
+
+        // 2026-11-21 · reconnected (or joined) while a minigame runs: wait here until the seat is free.
+        seatPanel = new GameObject("Esperando tu sitio", typeof(RectTransform), typeof(Image));
+        var sr = seatPanel.GetComponent<RectTransform>(); sr.SetParent(root.transform, false);
+        sr.anchorMin = Vector2.zero; sr.anchorMax = Vector2.one; sr.offsetMin = sr.offsetMax = Vector2.zero;
+        seatPanel.GetComponent<Image>().color = new Color(.03f, .05f, .12f, .93f);
+        var seatBox = Panel(seatPanel.transform, "Aviso", new Vector2(.5f, .5f), Vector2.zero, new Vector2(640, 190));
+        seatText = Label(seatBox.transform, 20, Vector2.zero, new Vector2(600, 170));
+        seatPanel.SetActive(false);
+
+        // 2026-11-20 · online: every player's ping, bottom-right, while a minigame runs.
+        pingBox = Panel(root.transform, "Ping", new Vector2(1, 0), new Vector2(-112, 70), new Vector2(210, 120));
+        pingBox.GetComponent<Image>().color = new Color(.05f, .08f, .18f, .72f);
+        pingText = Label(pingBox.transform, 14, Vector2.zero, new Vector2(194, 112));
+        pingText.alignment = TextAnchor.MiddleLeft;
+        pingBox.SetActive(false);
 
         // Loading card between scenes.
         loadingPanel = new GameObject("Pantalla de carga", typeof(RectTransform), typeof(Image));
@@ -924,7 +1097,7 @@ public sealed class MultiversePartyOverlay : MonoBehaviour
             foreach (int i in Enumerable.Range(0, party.Members.Count).OrderByDescending(i => party.Members[i].Score))
             {
                 var m = party.Members[i];
-                string dots = new string('●', m.Score) + new string('○', MultiverseParty.WinScore - m.Score);
+                string dots = new string('●', Mathf.Min(m.Score, MultiverseParty.WinScore)) + new string('○', Mathf.Max(0, MultiverseParty.WinScore - m.Score));
                 string color = ColorUtility.ToHtmlStringRGB(party.ColorOf(i));
                 sb.Append("<color=#").Append(color).Append(">").Append(m.Name).Append(i == party.LocalIndex ? " (tú)" : m.Bot ? " · bot" : "").Append("</color>   ")
                   .Append(dots).Append(i == w ? "  <color=#FFD54A>+1</color>" : "").Append('\n');
@@ -939,5 +1112,37 @@ public sealed class MultiversePartyOverlay : MonoBehaviour
                 ? "Esperando a que terminen los demás jugadores… " + party.ReportsIn + "/" + Mathf.Max(1, party.ReportsNeeded) + (party.Countdown > 0 ? " · " + Mathf.CeilToInt(party.Countdown) + " s" : "")
                 : "Contando puntos…";
         if (toastBox.activeSelf && Time.unscaledTime > toastUntil) toastBox.SetActive(false);
+
+        bool waitSeat = party.Online && !party.IsHost && !party.Seated && !inMenu && party.Net != null;
+        if (seatPanel.activeSelf != waitSeat) seatPanel.SetActive(waitSeat);
+        if (waitSeat)
+        {
+            string game = party.Selected >= 0 && party.Selected < PartyGames.Count ? PartyGames.All[party.Selected].Title : "el minijuego";
+            seatText.text = "<size=30><color=#FFD54A>¡DE VUELTA EN LA SALA " + party.RoomCode + "!</color></size>\n\n" +
+                (party.Phase == PartyPhase.Playing
+                    ? "Se está jugando " + game + ". Entras en cuanto termine,\ncon tu sitio y tus puntos."
+                    : "Preparando tu sitio…");
+        }
+
+        bool showPing = party.Online && !inHub && !inMenu && !party.Loading && party.Members.Any(m => !m.Bot);
+        if (pingBox.activeSelf != showPing) pingBox.SetActive(showPing);
+        if (showPing && Time.unscaledTime >= nextPingText)
+        {
+            nextPingText = Time.unscaledTime + .5f;
+            var sb = new System.Text.StringBuilder("<color=#FFD54A>PING</color>\n");
+            int lines = 0;
+            for (int i = 0; i < party.Members.Count; i++)
+            {
+                var m = party.Members[i]; if (m.Bot) continue;
+                string name = m.Name.Length > 11 ? m.Name.Substring(0, 11) : m.Name;
+                sb.Append("<color=#").Append(ColorUtility.ToHtmlStringRGB(party.ColorOf(i))).Append(">■ ").Append(name)
+                  .Append(i == party.LocalIndex ? " (tú)" : "").Append("</color>  ").Append(MultiverseParty.PingTag(m)).Append('\n');
+                lines++;
+            }
+            pingText.text = sb.ToString().TrimEnd('\n');
+            var size = new Vector2(210, 30 + lines * 19);
+            pingBox.GetComponent<RectTransform>().sizeDelta = size; pingText.rectTransform.sizeDelta = size - new Vector2(16, 8);
+            pingBox.GetComponent<RectTransform>().anchoredPosition = new Vector2(-112, 12 + size.y * .5f);
+        }
     }
 }

@@ -52,7 +52,7 @@ public sealed class PirateArenaPartyNet : MonoBehaviour
         PartyLink.Listen(ChInput, OnInput);
         PartyLink.Listen(ChState, OnState);
         PartyLink.Listen(ChEvent, OnEvent);
-        PartyLink.MarkReady();
+        PartyLink.Fast(ChInput, ChState); PartyLink.MarkReady();
     }
 
     void OnDestroy()

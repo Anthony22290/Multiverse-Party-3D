@@ -43,7 +43,7 @@ public sealed class MortalCodeHUD : MonoBehaviour
         var go=new GameObject("Código Mortal HUD",typeof(Canvas),typeof(UnityEngine.UI.CanvasScaler),typeof(UnityEngine.UI.GraphicRaycaster));root=go.transform;
         go.GetComponent<Canvas>().renderMode=RenderMode.ScreenSpaceOverlay;
         var scaler=go.GetComponent<UnityEngine.UI.CanvasScaler>();scaler.uiScaleMode=UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution=new(1280,720);scaler.matchWidthOrHeight=.5f;
+        scaler.referenceResolution=new(1280,720);scaler.matchWidthOrHeight=.5f; scaler.screenMatchMode = UnityEngine.UI.CanvasScaler.ScreenMatchMode.Expand;
         if(EventSystem.current==null)new GameObject("EventSystem",typeof(EventSystem),typeof(InputSystemUIInputModule));
         var top=Panel("Estado",new(.5f,1),new(0,-43),new(850,68));
         status=Text("",top.transform,new(.5f,.5f),Vector2.zero,new(830,60),24,paper);

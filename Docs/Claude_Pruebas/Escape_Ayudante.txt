@@ -1,0 +1,7 @@
+INFO Salas: RoomCipher, RoomTiles, RoomPortal
+PASS Sala 1: el ayudante aparece a los 90 s
+PASS Sala 1 Gabinete del Cifrado resuelta a los 96 s por Ayudante
+PASS Sala 1: el ayudante se va al abrirse la puerta
+PASS Sala 2: el ayudante aparece a los 90 s
+PASS Sala 2 Puente de Baldosas resuelta a los 125 s por Ayudante
+PASS Sala 2: el ayudante se va al abrirse la puerta

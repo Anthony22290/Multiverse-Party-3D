@@ -49,7 +49,7 @@ public sealed class RoomLanterns : EscapeRoom
             Block("Tapa", p + new Vector3(0, .26f, -.18f), new Vector3(.3f, .06f, .3f), iron, .02f, false);
             int idx = i;
             uses[i] = EscapeInteractable.Add(lamp, "Tocar el farol", 0f, a => Press(idx, a), a => Active, 2.6f);
-            uses[i].maxBelow = 3.6f; uses[i].aimRadius = .28f;
+            uses[i].maxBelow = 3.6f; uses[i].aimRadius = .28f; uses[i].markOffset = new Vector3(.25f, .3f, -.15f);
         }
         EscapeKit.Text(transform, "QUE NINGUNO DUERMA", Center + new Vector3(0, -1.95f, -.1f), EscapeFP.OnExit, .022f, new Color(1f, .9f, .7f));
         EscapeKit.PointLight(transform, Center + new Vector3(0, 0, -2f), Accent, 6f, .6f);
@@ -319,7 +319,7 @@ public sealed class RoomPipes : EscapeRoom
                 p.pivot = pivot;
                 var pp = p;
                 p.use = EscapeInteractable.Add(pivot.gameObject, "Girar el tubo", 0f, a => { Touch(a); pp.rot = (pp.rot + 1) % 4; EscapeAudio.Play("tick", pp.pivot.position, .6f); }, a => Active && !flowing, 2.6f);
-                p.use.maxBelow = 3.6f; p.use.aimRadius = .3f;
+                p.use.maxBelow = 3.6f; p.use.aimRadius = .3f; p.use.markOffset = new Vector3(.26f, .26f, -.1f);
                 grid[r, c] = p;
             }
         // Tap on the left, drain and water wheel on the right.
@@ -394,6 +394,7 @@ public sealed class RoomPipes : EscapeRoom
 public sealed class RoomNumbers : EscapeRoom
 {
     readonly int[] answers = new int[3];
+    readonly string[] shown = new string[3];
     string code;
     EscapeInteractable keypad;
     float lockedUntil;
@@ -441,7 +442,8 @@ public sealed class RoomNumbers : EscapeRoom
         var ceil = new Vector3(0, EscapeLevel.WallHeight - .05f, -2.5f);
         Block("Placa del techo", ceil, new Vector3(6.4f, .08f, 2.2f), dark, .02f, false);
         EscapeKit.Text(transform, "I", ceil + new Vector3(0, -.06f, -.75f), new Vector3(-90, 0, 0), .05f, EscapeFP.Brass);
-        EscapeKit.Text(transform, Show(seqs[0]), ceil + new Vector3(0, -.06f, .15f), new Vector3(-90, 0, 0), .028f, ink);
+        Secret(EscapeKit.Text(transform, Show(seqs[0]), ceil + new Vector3(0, -.06f, .15f), new Vector3(-90, 0, 0), .028f, ink));
+        for (int i = 0; i < 3; i++) shown[i] = Show(seqs[i]);
         var starMat = EscapeKit.Glow(new Color(.8f, .9f, 1f), 1.8f);
         for (int k = 0; k < 30; k++)
             EscapeKit.Shape(PrimitiveType.Sphere, transform, "Estrella del techo", new Vector3(Random.Range(-9f, 9f), EscapeLevel.WallHeight - .02f, Random.Range(-10f, 10f)), Vector3.one * Random.Range(.05f, .12f), starMat, false);
@@ -450,14 +452,14 @@ public sealed class RoomNumbers : EscapeRoom
         var low = new Vector3(-EscapeFP.SideX + .05f, .75f, 3.5f);
         Block("Placa baja", low, new Vector3(.06f, .9f, 3.6f), dark, .02f, false);
         EscapeKit.Text(transform, "II", low + new Vector3(.06f, .28f, 0), EscapeFP.OnLeft, .03f, EscapeFP.Brass);
-        EscapeKit.Text(transform, Show(seqs[1]), low + new Vector3(.06f, -.12f, 0), EscapeFP.OnLeft, .02f, ink);
+        Secret(EscapeKit.Text(transform, Show(seqs[1]), low + new Vector3(.06f, -.12f, 0), EscapeFP.OnLeft, .02f, ink));
         Block("Columna", new Vector3(-8.4f, EscapeLevel.WallHeight * .5f, 3.5f), new Vector3(1f, EscapeLevel.WallHeight, 1.4f), M("Crema", new Color(.8f, .8f, .86f)), .1f);
 
         // III: big and obvious on the right wall (the decoy).
         var deco = new Vector3(EscapeFP.SideX - .05f, 2.2f, 0f);
         Block("Placa grande", deco, new Vector3(.06f, 1.4f, 5f), dark, .02f, false);
         EscapeKit.Text(transform, "III", deco + new Vector3(-.06f, .42f, 0), EscapeFP.OnRight, .04f, EscapeFP.Brass);
-        EscapeKit.Text(transform, Show(seqs[2]), deco + new Vector3(-.06f, -.12f, 0), EscapeFP.OnRight, .032f, ink);
+        Secret(EscapeKit.Text(transform, Show(seqs[2]), deco + new Vector3(-.06f, -.12f, 0), EscapeFP.OnRight, .032f, ink));
 
         // Telescope (decor) and the keypad.
         Block("Trípode", new Vector3(5.5f, .8f, -6f), new Vector3(.3f, 1.6f, .3f), gold, .04f);
@@ -497,6 +499,12 @@ public sealed class RoomNumbers : EscapeRoom
 
     protected override void OnSolved() => Confetti(W(new Vector3(0, 2.5f, -2.5f)), Accent, 70);
 
+    protected override EscapeInteractable BlindStation => keypad;
+    public override string[] ReadAloud => new[]
+    {
+        "Serie I, en el techo: " + shown[0], "Serie II, abajo tras la columna: " + shown[1], "Serie III, la placa grande: " + shown[2]
+    };
+
     public override EscapeOrder Order(EscapeActor a)
     {
         if (a.Role != 1 || !Assist(110f) || Time.time < lockedUntil) return Wait(a);
@@ -517,11 +525,12 @@ public sealed class RoomFootprints : EscapeRoom
     float trapCooldown;
 
     public override string Title => "Pasillo de las Huellas";
-    public override string Objective => Solved ? "Las trampas duermen: cruzad todos." : "El suelo está lleno de trampas. Alguien cruzó antes que vosotros…";
+    int crossed;
+    public override string Objective => Solved ? "Las trampas duermen." : $"El suelo está lleno de trampas. Cruza al otro lado. Alguien cruzó antes que tú…";
     public override string[] Clues => new[]
     {
         "Los que cruzaron antes dejaron huellas, pero solo se ven con la luz adecuada.",
-        "Coge el farol del pedestal de la entrada y avanza despacio: pisa solo las losas donde brillan las huellas. Quien lo lleva puede guiar a los demás."
+        "Coge el farol del pedestal de la entrada y avanza despacio: pisa solo las losas donde brillan las huellas."
     };
     public override Color Floor => new Color(.5f, .44f, .36f);
     public override Color Wall => new Color(.68f, .6f, .5f);
@@ -571,6 +580,7 @@ public sealed class RoomFootprints : EscapeRoom
             EscapeKit.Block(it.transform, "Tapa", new Vector3(0, .21f, 0), new Vector3(.3f, .06f, .3f), gold, .02f, false);
             EscapeKit.PointLight(it.transform, Vector3.zero, Accent, 4f, 1.2f);
         });
+        lantern.Pick.Shared = true;   // anyone may carry the lantern and guide the others
         EscapeKit.Text(transform, "PISA DONDE PISARON", new Vector3(0, .05f, -8f), new Vector3(90, 0, 0), .04f, new Color(.95f, .9f, .8f));
         Prop("Antorcha tiki", new Vector3(-8.9f, 0, 9.4f), 0); Prop("Antorcha tiki", new Vector3(8.9f, 0, 9.4f), 0);
     }
@@ -585,11 +595,14 @@ public sealed class RoomFootprints : EscapeRoom
         }
         if (!Active) return;
         trapCooldown -= Time.deltaTime;
+        float end = MinZ + Rows * PitchZ + .25f;
+        crossed = Runners.Count(x => InRoom(x) && L(x.transform.position).z > end);
+        if (crossed >= TeamSize) { Solve(lastTouch != null ? lastTouch : Team[0]); return; }
         foreach (var a in Team)
         {
             if (!InRoom(a) || !a.Grounded) continue;
             var p = L(a.transform.position);
-            if (p.z > MinZ + Rows * PitchZ + .25f) { Solve(a); return; }
+            if (p.z > end) { Touch(a); continue; }
             int c = Mathf.FloorToInt((p.x - MinX) / PitchX), r = Mathf.FloorToInt((p.z - MinZ) / PitchZ);
             if (r < 0 || r >= Rows || c < 0 || c >= Cols || safe[r, c]) continue;
             EscapeAudio.Play("zap", a.transform.position, .9f);
@@ -605,7 +618,15 @@ public sealed class RoomFootprints : EscapeRoom
     {
         if (Solved) return Wait(a);
         Vector3 lp = L(a.transform.position);
-        bool walker = a.Role == 1 && Assist(110f);
+        bool walker = Assist(105f + a.Role * 4f);   // co-op: everybody has to cross
+        // One at a time: wait until the teammate ahead is three slabs in (they all share the same safe path).
+        if (walker && lp.z < MinZ + Rows * PitchZ)
+            foreach (var b in Team)
+            {
+                if (b == a || !b.DrivenByBot || b.Role > a.Role || !InRoom(b) || L(b.transform.position).z > MinZ + Rows * PitchZ) continue;
+                if (b.Role == a.Role && b.Slot > a.Slot) continue;
+                if (!progress.TryGetValue(b, out int ahead) || ahead < 3) { walker = false; break; }
+            }
         if (!walker) return EscapeOrder.Go(W(new Vector3(-6f + a.Role * 2.2f, 0, -8.6f)), .5f);
         if (!progress.TryGetValue(a, out int i) || lp.z < MinZ - .3f) i = -1;
         if (i == -1)
@@ -622,7 +643,12 @@ public sealed class RoomFootprints : EscapeRoom
             if (d.magnitude < .3f) i++;
         }
         progress[a] = i;
-        if (i >= path.Count) return EscapeOrder.Exact(W(new Vector3(X(path[path.Count - 1].c), 0, MinZ + Rows * PitchZ + 1f)));
+        if (i >= path.Count)
+        {
+            float end = MinZ + Rows * PitchZ;
+            if (lp.z < end + .7f) return EscapeOrder.Exact(W(new Vector3(X(path[path.Count - 1].c), 0, end + 1f)));
+            return EscapeOrder.Go(W(new Vector3(Mathf.Clamp(X(path[path.Count - 1].c) + (a.Role - 2.5f) * 1.2f, -8f, 8f), 0, end + 1.6f)), .4f);
+        }
         return EscapeOrder.Exact(W(new Vector3(X(path[i].c), 0, Z(path[i].r))));
     }
 }

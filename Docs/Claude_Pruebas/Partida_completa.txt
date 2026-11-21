@@ -1,11 +1,16 @@
 PASS Menú principal en pantalla
 PASS Plaza cargada · 5 jugadores (4 bots)
-PASS Ronda 1: [INVASIÓN ZOMBI / CARRERAS LOCAS / ARENA DEL CAOS] votos 3-2-0 → INVASIÓN ZOMBI · gana Prueba (0→1)
-PASS Ronda 2: [SALA DE ESCAPE / ARENA DEL CAOS / CARRERAS LOCAS] votos 0-4-1 → ARENA DEL CAOS · gana Menta (0→1)
-PASS Ronda 3: [INVASIÓN ZOMBI / CÓDIGO MORTAL / SALA DE ESCAPE] votos 0-4-1 → CÓDIGO MORTAL · gana Prueba (1→2)
-PASS Ronda 4: [INVASIÓN ZOMBI / SALA DE ESCAPE / CARRERAS LOCAS] votos 2-3-0 → SALA DE ESCAPE · gana Prueba (2→3)
-PASS Ronda 5: [CARRERAS LOCAS / INVASIÓN ZOMBI / ARENA DEL CAOS] votos 0-2-3 → ARENA DEL CAOS · gana Prueba (3→4)
-PASS Ronda 6: [CARRERAS LOCAS / CÓDIGO MORTAL / SALA DE ESCAPE] votos 3-2-0 → CARRERAS LOCAS · gana Prueba (4→5)
-PASS Campeón: Prueba con 5 puntos tras 6 rondas
-INFO Marcador: Prueba 5, Coral 0, Menta 1, Rayo 0, Lila 0
-INFO Minijuegos jugados: InvasionZombi×1, ArenaDelCaos×2, CodigoMortal×1, SalaDeEscape×1, CarrerasLocas×1
+PASS Ronda 1: [CÓDIGO MORTAL / RODILLOS DEL CALABOZO / SALA DE ESCAPE] votos 3-2-0 → CÓDIGO MORTAL · gana Prueba (0→1)
+PASS Ronda 2: [ARENA DEL CAOS / SALA DE ESCAPE / INVASIÓN ZOMBI] votos 2-3-0 → SALA DE ESCAPE · gana Menta (0→1)
+PASS Ronda 3: [INVASIÓN ZOMBI / ARENA DEL CAOS / RODILLOS DEL CALABOZO] votos 3-2-0 → INVASIÓN ZOMBI · gana Menta (1→2)
+PASS Ronda 4: [SALA DE ESCAPE / CÓDIGO MORTAL / ARENA DEL CAOS] votos 1-2-2 → CÓDIGO MORTAL · gana Coral (0→1)
+PASS Ronda 5: [INVASIÓN ZOMBI / CARRERAS LOCAS / SALA DE ESCAPE] votos 1-0-4 → SALA DE ESCAPE · gana Lila (0→1)
+PASS Ronda 6: [CARRERAS LOCAS / INVASIÓN ZOMBI / CÓDIGO MORTAL] votos 0-5-0 → INVASIÓN ZOMBI · gana Prueba (1→2)
+PASS Ronda 7: [CÓDIGO MORTAL / CARRERAS LOCAS / RODILLOS DEL CALABOZO] votos 1-1-2 → RODILLOS DEL CALABOZO · gana Menta (2→3)
+PASS Ronda 8: [CARRERAS LOCAS / SALA DE ESCAPE / INVASIÓN ZOMBI] votos 1-2-2 → INVASIÓN ZOMBI · gana Prueba (2→3)
+PASS Ronda 9: [CARRERAS LOCAS / CÓDIGO MORTAL / ARENA DEL CAOS] votos 4-1-0 → CARRERAS LOCAS · gana Lila (1→2)
+PASS Ronda 10: [INVASIÓN ZOMBI / ARENA DEL CAOS / CÓDIGO MORTAL] votos 5-0-0 → INVASIÓN ZOMBI · gana Prueba (3→4)
+PASS Ronda 11: [SALA DE ESCAPE / ARENA DEL CAOS / CARRERAS LOCAS] votos 4-0-1 → SALA DE ESCAPE · gana Prueba (4→5)
+PASS Campeón: Prueba con 5 puntos tras 11 rondas
+INFO Marcador: Prueba 5, Coral 1, Menta 3, Rayo 0, Lila 2
+INFO Minijuegos jugados: CodigoMortal×2, SalaDeEscape×3, InvasionZombi×4, RodillosDelCalabozo×1, CarrerasLocas×1
